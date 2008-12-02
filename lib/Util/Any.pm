@@ -34,12 +34,12 @@ sub import {
 
   no strict 'refs';
 
-  foreach my $kind (keys %Utils) {
+  foreach my $kind (keys %{$class . '::Utils'}) {
     my ($prefix, $module_prefix) = ('','');
 
     if (exists $want{$kind}) {
-      foreach my $class (@{$Utils{$kind}}) {
-        ($class, $module_prefix) = ref $class ? @$class : ($class, $prefix);
+      foreach my $class (@{${$class . '::Utils'}{$kind}}) {
+        ($class, $module_prefix) = ref $class ? @$class : ($class, '');
         if ($opt{module_prefix} and $module_prefix) {
           $prefix = $module_prefix;
         } elsif ($opt{prefix}) {
@@ -121,10 +121,13 @@ no functions.
 
 =head1 CREATE YOUR OWN Util::Any
 
+Just inherit Util::Any and define %Utils as the following.
+
  package Util::Yours;
  
  use base qw/Util::Any/;
- push @{$Util::Any::Utils{list}}, qw/Your::Favorite::List::Utils/;
+ our %Utils = %Util::Any::Utils;
+ push @{$Utils{list}}, qw/Your::Favorite::List::Utils/;
  
  1;
 
@@ -139,10 +142,9 @@ You can specify prefix for each module like the following.
 
  use base qw/Util::Any/;
  
- %Util::Any::Utils = (
+ our %Utils = (
       list => [['List::Util' => 'lu_'], ['List::MoreUtils' => 'lmu_']]
  );
-
 
 In your code;
 

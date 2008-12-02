@@ -1,7 +1,7 @@
 package MyUtil;
 
 use base qw/Util::Any/;
-%Util::Any::Utils =
+our %Utils =
   (
    list => [['List::Util' => 'lu_']],
   );
