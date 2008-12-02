@@ -1,20 +1,21 @@
 package Util::Any;
 
 use ExportTo ();
+use Carp ();
 use warnings;
 use strict;
 
 our %Utils = (
-              List   => [ qw/List::Util List::MoreUtils/ ],
-              Scalar => [ qw/Scalar::Util/ ],
-              Hash   => [ qw/Hash::Util/ ],
+              list   => [ qw/List::Util List::MoreUtils/ ],
+              scalar => [ qw/Scalar::Util/ ],
+              hash   => [ qw/Hash::Util/ ],
              );
 
 sub import {
   my $class = shift;
   my $caller = (caller)[0];
   my %want;
-  my %opt = (prefix => 0);
+  my %opt = (prefix => 0, module_prefix => 0);
 
   if (@_ > 1 and ref $_[-1] eq 'HASH') {
     %opt = (%opt, %{pop()});
@@ -22,42 +23,45 @@ sub import {
 
   if (@_) {
     if (ref $_[0] eq 'HASH') {
-      %want = %{shift()};
+      my %_want = %{shift()};
+      %want = map {lc($_) => $_want{$_}} keys %_want;
     } elsif (lc($_[0]) eq 'all') {
       @want{keys %Utils} = ();
     } else {
-      @want{@_} = ();
+      @want{map lc $_, @_} = ();
     }
   }
 
   no strict 'refs';
 
   foreach my $kind (keys %Utils) {
-    my $prefix = lc($kind) . '_';
+    my ($prefix, $module_prefix) = ('','');
+
     if (exists $want{$kind}) {
       foreach my $class (@{$Utils{$kind}}) {
+        ($class, $module_prefix) = ref $class ? @$class : ($class, $prefix);
+        if ($opt{module_prefix} and $module_prefix) {
+          $prefix = $module_prefix;
+        } elsif ($opt{prefix}) {
+          $prefix = lc($kind) . '_';
+        }
         eval "require $class";
         unless ($@) {
           my @funcs = @{${class} . '::EXPORT_OK'};
-          unless (my $want_func = $want{$kind}) {
-            if ($opt{prefix}) {
-              ExportTo::export_to
-                  ($caller => {map {$prefix . $_ => $class . '::' . $_} @funcs});
-            } else {
-              ExportTo::export_to
-                  ($caller => [map $class . '::' . $_, @funcs]);
-            }
-          } else {
+          if (my $want_func = $want{$kind}) {
             my %w;
             @w{@$want_func} = ();
-            if ($opt{prefix}) {
-              ExportTo::export_to
-                  ($caller => {map {$prefix . $_ => $class . '::' . $_} grep exists $w{$_}, @funcs});
-            } else {
-              ExportTo::export_to
-                  ($caller => [map $class . '::' . $_, grep exists $w{$_}, @funcs]);
-            }
+            @funcs = grep exists $w{$_}, @funcs;
           }
+          if ($prefix) {
+            ExportTo::export_to
+                ($caller => {map {$prefix . $_ => $class . '::' . $_} @funcs});
+          } else {
+            ExportTo::export_to
+                ($caller => [map $class . '::' . $_, @funcs]);
+          }
+        } else {
+          Carp::carp $@;
         }
       }
     }
@@ -79,27 +83,29 @@ our $VERSION = '0.01';
 
 =head1 SYNOPSIS
 
-    use Util::Any qw/List/;
+    use Util::Any qw/list/;
     # you can import any functions of List::Util and List::MoreUtils
 
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to choose functions
 
-    use Util::Any {List => qw/uniq/};
+    use Util::Any {list => qw/uniq/};
     # you can import uniq function, not import other functions
 
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to import All kind of utility functions
 
-    use Util::Any qw/All/;
+    use Util::Any qw/all/;
 
 If you want to import functions with prefix(ex. list_, scalar_, hash_)
 
-    use Util::Any qw/All/, {prefix => 1};
-    use Util::Any qw/List/, {prefix => 1};
+    use Util::Any qw/all/, {prefix => 1};
+    use Util::Any qw/list/, {prefix => 1};
     use Util::Any {List => qw/uniq/}, {prefix => 1};
+    
+    print list_uniq qw/1, 0, 1, 2, 3, 3/;
 
 =head1 DESCRIPTION
 
@@ -117,16 +123,30 @@ no functions.
 
  package Util::Yours;
  
- BEGIN {
-  use base qw/Util::Any/;
-  push @{$Util::Any::Utils{List}}, qw/Your::Favolite::List::Utils/;
- }
+ use base qw/Util::Any/;
+ push @{$Util::Any::Utils{list}}, qw/Your::Favorite::List::Utils/;
  
  1;
 
-In your code.
+In your code;
 
- use Util::Yours qw/List/;
+ use Util::Yours qw/list/;
+
+=head1 PREFIX FOR EACH MODULE
+
+If you want to import many modules and they have same function name.
+You can specify prefix for each module like the following.
+
+ use base qw/Util::Any/;
+ 
+ %Util::Any::Utils = (
+      list => [['List::Util' => 'lu_'], ['List::MoreUtils' => 'lmu_']]
+ );
+
+
+In your code;
+
+ use Util::Yours qw/list/, {module_prefix => 1};
 
 =head1 AUTHOR
 

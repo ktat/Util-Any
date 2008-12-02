@@ -1,11 +1,9 @@
 package MyUtil;
 
-BEGIN {
-  use base qw/Util::Any/;
-  %Util::Any::Utils =
-    (
-     List => [qw/List::Util/],
-    );
-}
+use base qw/Util::Any/;
+%Util::Any::Utils =
+  (
+   list => [['List::Util' => 'lu_']],
+  );
 
 1;
