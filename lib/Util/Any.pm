@@ -12,7 +12,8 @@ our %Utils = (
              );
 
 sub import {
-  my $class = shift;
+  my $pkg = shift;
+
   my $caller = (caller)[0];
   my %want;
   my %opt = (prefix => 0, module_prefix => 0);
@@ -34,11 +35,11 @@ sub import {
 
   no strict 'refs';
 
-  foreach my $kind (keys %{$class . '::Utils'}) {
+  foreach my $kind (keys %{$pkg . '::Utils'}) {
     my ($prefix, $module_prefix) = ('','');
 
     if (exists $want{$kind}) {
-      foreach my $class (@{${$class . '::Utils'}{$kind}}) {
+      foreach my $class (@{${$pkg . '::Utils'}{$kind}}) {
         ($class, $module_prefix) = ref $class ? @$class : ($class, '');
         if ($opt{module_prefix} and $module_prefix) {
           $prefix = $module_prefix;
