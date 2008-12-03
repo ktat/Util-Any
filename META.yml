@@ -1,0 +1,14 @@
+name:         Util-Any
+version:      0.01
+version_from: lib/Util/Any.pm
+installdirs:  site
+requires:
+    ExportTo:                      0
+    Hash::Util:                    0
+    List::MoreUtils:               0
+    List::Util:                    0
+    Scalar::Util:                  0
+    Test::More:                    0
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.30
