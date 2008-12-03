@@ -1,5 +1,9 @@
 Revision history for Util-Any
 
+0.02    2008/12/03 14:52
+        class variables should be cloned in sub class,
+        so change %Utils variables from hash to hash ref to clone easily.
+
 0.01    2008/12/03 03:13
         First version
 

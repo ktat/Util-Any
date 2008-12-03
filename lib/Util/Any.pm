@@ -5,15 +5,18 @@ use Carp ();
 use warnings;
 use strict;
 
-our %Utils = (
+our $Utils = {
               list   => [ qw/List::Util List::MoreUtils/ ],
               scalar => [ qw/Scalar::Util/ ],
               hash   => [ qw/Hash::Util/ ],
-             );
+             };
 
 sub import {
   my $pkg = shift;
 
+  no strict 'refs';
+
+  my $config = ${$pkg . '::Utils'};
   my $caller = (caller)[0];
   my %want;
   my %opt = (prefix => 0, module_prefix => 0);
@@ -27,7 +30,7 @@ sub import {
       my %_want = %{shift()};
       %want = map {lc($_) => $_want{$_}} keys %_want;
     } elsif (lc($_[0]) eq 'all') {
-      @want{keys %Utils} = ();
+      @want{keys %$config} = ();
     } else {
       @want{map lc $_, @_} = ();
     }
@@ -35,11 +38,11 @@ sub import {
 
   no strict 'refs';
 
-  foreach my $kind (keys %{$pkg . '::Utils'}) {
+  foreach my $kind (keys %$config) {
     my ($prefix, $module_prefix) = ('','');
 
     if (exists $want{$kind}) {
-      foreach my $class (@{${$pkg . '::Utils'}{$kind}}) {
+      foreach my $class (@{$config->{$kind}}) {
         ($class, $module_prefix) = ref $class ? @$class : ($class, '');
         if ($opt{module_prefix} and $module_prefix) {
           $prefix = $module_prefix;
@@ -76,11 +79,11 @@ Util::Any - Export any utilities and To create your own Util::Any
 
 =head1 VERSION
 
-Version 0.01
+Version 0.02
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -122,13 +125,14 @@ no functions.
 
 =head1 CREATE YOUR OWN Util::Any
 
-Just inherit Util::Any and define %Utils as the following.
+Just inherit Util::Any and define $Utils hash ref as the following.
 
  package Util::Yours;
  
+ use Clone qw/clone/;
  use base qw/Util::Any/;
- our %Utils = %Util::Any::Utils;
- push @{$Utils{list}}, qw/Your::Favorite::List::Utils/;
+ our $Utils = clone $Util::Any::Utils;
+ push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
  
  1;
 
@@ -143,9 +147,9 @@ You can specify prefix for each module like the following.
 
  use base qw/Util::Any/;
  
- our %Utils = (
+ our $Utils = {
       list => [['List::Util' => 'lu_'], ['List::MoreUtils' => 'lmu_']]
- );
+ };
 
 In your code;
 
