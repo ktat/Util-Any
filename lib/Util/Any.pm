@@ -54,7 +54,7 @@ sub import {
         eval "require $class";
         unless ($@) {
           my %funcs;
-          @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT_OK'}} = ();
+          @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
           my @funcs = keys %funcs;
           if (my $want_func = $want{$kind}) {
             my %w;
@@ -127,15 +127,15 @@ If you want to import functions with prefix(ex. list_, scalar_, hash_)
 =head1 DESCRIPTION
 
 For the people like the man who cannot remember C<uniq> function is in whether List::Util or List::MoreUtils.
-And for the newbie who don't know where useful utilites is.
+And for the newbie who don't know where useful utilities is.
 
-Perl has many modules and they have many untilitiy functions.
+Perl has many modules and they have many utility functions.
 For example, List::Util, List::MoreUtils, Scalar::Util, Hash::Util,
 String::Util, String::CamelCase, Data::Dumper etc.
 
 We, Perl users, have to memorize module name and their function name.
 Using this module, you don't need to memorize module name,
-only memorize kind of modules and funcion name.
+only memorize kind of modules and function name.
 
 And this module allow you to create your own utility module, easily.
 You can create your own module and use this in the same way as Util::Any like the following.
@@ -274,6 +274,23 @@ Just inherit Util::Any and define $Utils hash ref as the following.
 In your code;
 
  use Util::Yours qw/list/;
+
+=head2 $Utils DEFINITION RULE
+
+Key must be lower character.
+
+ NG $Utils = { LIST => [qw/List::Util/]};
+ OK $Utils = { list => [qw/List::Util/]};
+
+C<all> cannot be used for key.
+
+ NG $Utils = { all => [qw/List::Util/]};
+
+Value is array ref which contained scalar or array ref.
+Scalar is module name. Array ref is module name and its prefix.
+
+ $Utils = { list => ['List::Utils'] };
+ $Utils = { list => [['List::Utils', 'lu_']] };
 
 =head1 PREFIX FOR EACH MODULE
 
