@@ -9,6 +9,8 @@ our $Utils = {
               list   => [ qw/List::Util List::MoreUtils/ ],
               scalar => [ qw/Scalar::Util/ ],
               hash   => [ qw/Hash::Util/ ],
+              debug  => [ qw/Data::Dumper/],
+              string => [ qw/String::Util String::CamelCase/],
              };
 
 sub import {
@@ -51,7 +53,9 @@ sub import {
         }
         eval "require $class";
         unless ($@) {
-          my @funcs = @{${class} . '::EXPORT_OK'};
+          my %funcs;
+          @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT_OK'}} = ();
+          my @funcs = keys %funcs;
           if (my $want_func = $want{$kind}) {
             my %w;
             @w{@$want_func} = ();
@@ -79,29 +83,38 @@ Util::Any - Export any utilities and To create your own Util::Any
 
 =head1 VERSION
 
-Version 0.02
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 =head1 SYNOPSIS
 
     use Util::Any qw/list/;
     # you can import any functions of List::Util and List::MoreUtils
-
+    
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to choose functions
 
     use Util::Any {list => qw/uniq/};
     # you can import uniq function, not import other functions
-
+    
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to import All kind of utility functions
 
     use Util::Any qw/all/;
+    
+    my $o = bless {};
+    my %hash = (a => 1, b => 2);
+    
+    # from Scalar::Util
+    blessed $o;
+    
+    # from Hash::Util
+    lock_keys %hash;
 
 If you want to import functions with prefix(ex. list_, scalar_, hash_)
 
@@ -113,11 +126,133 @@ If you want to import functions with prefix(ex. list_, scalar_, hash_)
 
 =head1 DESCRIPTION
 
-For the people who cannot remember uniq function is in whether List::Util or List::MoreUtils.
+For the people like the man who cannot remember C<uniq> function is in whether List::Util or List::MoreUtils.
+And for the newbie who don't know where useful utilites is.
+
+Perl has many modules and they have many untilitiy functions.
+For example, List::Util, List::MoreUtils, Scalar::Util, Hash::Util,
+String::Util, String::CamelCase, Data::Dumper etc.
+
+We, Perl users, have to memorize module name and their function name.
+Using this module, you don't need to memorize module name,
+only memorize kind of modules and funcion name.
+
+And this module allow you to create your own utility module, easily.
+You can create your own module and use this in the same way as Util::Any like the following.
+
+ use YourUtil qw/list/;
+
+see C<CREATE YOUR OWN Util::Any>.
 
 =head1 EXPORT
 
-Functions which are exported by List::Util, List::MoreUtils, Hash::Util.
+The following is kinds of functions and list of exported functions.
+
+=head2 scalar
+
+from Scalar::Util
+
+ blessed
+ dualvar
+ isvstring
+ isweak
+ looks_like_number
+ openhandle
+ readonly
+ refaddr
+ reftype
+ set_prototype
+ tainted
+ weaken
+
+=head2 hash
+
+from Hash::Util
+
+ hash_seed
+ lock_hash
+ lock_keys
+ lock_value
+ unlock_hash
+ unlock_keys
+ unlock_value
+
+=head2 list
+
+from List::Util
+
+ first
+ max
+ maxstr
+ min
+ minstr
+ reduce
+ shuffle
+ sum
+
+from List::MoreUtils
+
+ after
+ after_incl
+ all
+ any
+ apply
+ before
+ before_incl
+ each_array
+ each_arrayref
+ false
+ first_index
+ first_value
+ firstidx
+ firstval
+ indexes
+ insert_after
+ insert_after_string
+ last_index
+ last_value
+ lastidx
+ lastval
+ mesh
+ minmax
+ natatime
+ none
+ notall
+ pairwise
+ part
+ true
+ uniq
+ zip
+
+=head2 string
+
+from String::Util
+
+ crunch
+ define
+ equndef
+ fullchomp
+ hascontent
+ htmlesc
+ neundef
+ nospace
+ randcrypt
+ randword
+ trim
+ unquote
+
+from String::CamelCase
+
+ camelize
+ decamelize
+ wordsplit
+
+=head2 debug
+
+from Data::Dumper
+
+ Dumper
+ DumperX
 
 =head1 FUNCTIONS
 
@@ -162,7 +297,7 @@ Ktat, C<< <ktat at cpan.org> >>
 =head1 BUGS
 
 Please report any bugs or feature requests to
-C<bug-util at rt.cpan.org>, or through the web interface at
+C<bug-util-any at rt.cpan.org>, or through the web interface at
 L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Util-Any>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
