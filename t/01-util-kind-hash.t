@@ -4,7 +4,8 @@ use Util::Any qw/Hash/;
 no strict 'refs';
 
 foreach (@Hash::Util::EXPORT_OK) {
-  ok(defined &{$_} , $_);
+  no strict 'refs';
+  ok(defined &{$_} , $_) if defined &{'Hash::Util::' . $_};
 }
 
 foreach (@Scalar::Util::EXPORT_OK) {

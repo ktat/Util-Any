@@ -5,6 +5,7 @@ use Carp ();
 use warnings;
 use strict;
 
+our $DEBUG = 0;
 our $Utils = {
               list   => [ qw/List::Util List::MoreUtils/ ],
               scalar => [ qw/Scalar::Util/ ],
@@ -21,7 +22,7 @@ sub import {
   my $config = ${$pkg . '::Utils'};
   my $caller = (caller)[0];
   my %want;
-  my %opt = (prefix => 0, module_prefix => 0);
+  my %opt = (prefix => 0, module_prefix => 0, debug => 0);
 
   if (@_ > 1 and ref $_[-1] eq 'HASH') {
     %opt = (%opt, %{pop()});
@@ -51,11 +52,16 @@ sub import {
         } elsif ($opt{prefix}) {
           $prefix = lc($kind) . '_';
         }
-        eval "require $class";
-        unless ($@) {
+        my $evalerror;
+        {
+          local $@;
+          eval "require $class";
+          $evalerror = $@;
+        };
+        unless ($evalerror) {
           my %funcs;
           @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
-          my @funcs = keys %funcs;
+          my @funcs = grep defined &{$class . '::' . $_}, keys %funcs;
           if (my $want_func = $want{$kind}) {
             my %w;
             @w{@$want_func} = ();
@@ -69,13 +75,16 @@ sub import {
                 ($caller => [map $class . '::' . $_, @funcs]);
           }
         } else {
-          Carp::carp $@;
+          if ($opt{debug} == 2) {
+            Carp::croak $evalerror;
+          } elsif($opt{debug}) {
+            Carp::carp $evalerror;
+          }
         }
       }
     }
   }
 }
-
 
 =head1 NAME
 
@@ -143,6 +152,50 @@ You can create your own module and use this in the same way as Util::Any like th
  use YourUtil qw/list/;
 
 see C<CREATE YOUR OWN Util::Any>.
+
+=head1 HOW TO USE
+
+=head2 use Util::Any (KIND)
+
+ use Util::Any qw/list hash/;
+
+Give list of kinds of modules. All functions in moduls are exporeted.
+
+=head2  use Util::Any {KIND => [FUNCTIONS], ...};
+
+ use Util::Any {list => ['uniq'], hash => ['lock_keys']};
+
+Give hash ref whose key is kind and value is function names.
+Selected functions are exported.
+
+=head2  use Util::Any ..., {OPTION => VALUE};
+
+Util::Any can take last argument as option, which should be hash ref.
+
+=over 4
+
+=item prefix => 1
+
+add kind prefix to function name.
+
+ use Util::Any qw/list/, {prefix => 1};
+ 
+ list_uniq(1,2,3,4,5); # it is List::More::Utils's uniq function
+
+=item module_prefix => 1
+
+see L<PREFIX FOR EACH MODULE>.
+Uti::Any itself doesn't have such a definition.
+
+=item debug => 1/2
+
+Util::Any doesn't say anything when loading module fails.
+If you pass debug value, warn or die.
+
+ use Util::Any qw/list/, {debug => 1}; # warn
+ use Util::Any qw/list/, {debug => 2}; # die
+
+=back
 
 =head1 EXPORT
 

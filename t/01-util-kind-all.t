@@ -1,6 +1,6 @@
 use Test::More qw/no_plan/;
 
-use Util::Any qw/All/;
+use Util::Any qw/all/;
 no strict 'refs';
 
 foreach (@List::Util::EXPORT_OK) {
@@ -15,6 +15,7 @@ foreach (@Scalar::Util::EXPORT_OK) {
 }
 
 foreach (@Hash::Util::EXPORT_OK) {
-  ok(defined &{$_} , $_);
+  no strict 'refs';
+  ok(defined &{$_} , $_) if defined &{'Hash::Util::' . $_};
 }
 

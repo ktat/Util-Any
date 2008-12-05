@@ -15,5 +15,6 @@ foreach (@Scalar::Util::EXPORT_OK) {
 }
 
 foreach (@Hash::Util::EXPORT_OK) {
-  ok(defined &{'hash_' . $_} , $_);
+  no strict 'refs';
+  ok(defined &{'hash_' . $_} , $_) if defined &{'Hash::Util::' . $_};
 }

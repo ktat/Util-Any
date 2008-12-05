@@ -13,7 +13,8 @@ foreach (grep {$_ ne 'weaken' and $_ ne 'blessed'} @Scalar::Util::EXPORT_OK) {
 }
 
 foreach (@Hash::Util::EXPORT_OK) {
-  ok(! defined &{$_} , $_);
+  no strict 'refs';
+  ok(! defined &{$_} , $_) if defined &{'Hash::Util::' . $_};
 }
 
 foreach (@List::Util::EXPORT_OK) {
