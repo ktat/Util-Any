@@ -1,5 +1,11 @@
 Revision history for Util-Any
 
+0.03    2008/12/05 15:37
+        add debug option
+        write document in detail
+        fix for Perl 5.10.
+        Perl 5.10 Hash::Util doesn't have some functions which are defined in EXPORT_OK.
+
 0.02    2008/12/03 14:52
         class variables should be cloned in sub class,
         so change %Utils variables from hash to hash ref to clone easily.

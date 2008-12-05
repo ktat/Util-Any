@@ -17,4 +17,5 @@ t/01-util-kind-all.t
 t/01-util-kind-my-prefix.t
 t/02-util-func-scalar-prefix.t
 t/01-util-kind-all-prefix.t
+t/03-debug.t
 t/lib/MyUtil.pm

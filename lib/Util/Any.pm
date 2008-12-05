@@ -5,7 +5,6 @@ use Carp ();
 use warnings;
 use strict;
 
-our $DEBUG = 0;
 our $Utils = {
               list   => [ qw/List::Util List::MoreUtils/ ],
               scalar => [ qw/Scalar::Util/ ],
@@ -199,11 +198,13 @@ If you pass debug value, warn or die.
 
 =head1 EXPORT
 
-The following is kinds of functions and list of exported functions.
+Kinds of functions and list of exported functions are below.
+Note that these modules and version are in my environment(Perl 5.8.4).
+So, it must be diffrent in your environment.
 
 =head2 scalar
 
-from Scalar::Util
+from Scalar::Util (1.19)
 
  blessed
  dualvar
@@ -220,7 +221,7 @@ from Scalar::Util
 
 =head2 hash
 
-from Hash::Util
+from Hash::Util (0.05)
 
  hash_seed
  lock_hash
@@ -232,7 +233,7 @@ from Hash::Util
 
 =head2 list
 
-from List::Util
+from List::Util (1.19)
 
  first
  max
@@ -243,7 +244,7 @@ from List::Util
  shuffle
  sum
 
-from List::MoreUtils
+from List::MoreUtils (0.21)
 
  after
  after_incl
@@ -279,7 +280,7 @@ from List::MoreUtils
 
 =head2 string
 
-from String::Util
+from String::Util (0.11)
 
  crunch
  define
@@ -294,7 +295,7 @@ from String::Util
  trim
  unquote
 
-from String::CamelCase
+from String::CamelCase (0.01)
 
  camelize
  decamelize
@@ -302,7 +303,7 @@ from String::CamelCase
 
 =head2 debug
 
-from Data::Dumper
+from Data::Dumper (2.121)
 
  Dumper
  DumperX
@@ -328,7 +329,7 @@ In your code;
 
  use Util::Yours qw/list/;
 
-=head2 $Utils DEFINITION RULE
+=head2 $Utils STRUCTURE
 
 Key must be lower character.
 
@@ -343,7 +344,9 @@ Value is array ref which contained scalar or array ref.
 Scalar is module name. Array ref is module name and its prefix.
 
  $Utils = { list => ['List::Utils'] };
- $Utils = { list => [['List::Utils', 'lu_']] };
+ $Utils = { list => [['List::Utils', 'prefix_']] };
+
+see L<PREFIX FOR EACH MODULE>
 
 =head1 PREFIX FOR EACH MODULE
 
