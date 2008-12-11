@@ -9,8 +9,8 @@ our $Utils = {
               list   => [ qw/List::Util List::MoreUtils/ ],
               scalar => [ qw/Scalar::Util/ ],
               hash   => [ qw/Hash::Util/ ],
-              debug  => [ qw/Data::Dumper/],
-              string => [ qw/String::Util String::CamelCase/],
+              debug  => [ ['Data::Dumper', '', ['Dumper']] ],
+              string => [ qw/String::Util String::CamelCase/ ],
              };
 
 sub import {
@@ -41,11 +41,11 @@ sub import {
   no strict 'refs';
 
   foreach my $kind (keys %$config) {
-    my ($prefix, $module_prefix) = ('','');
+    my ($prefix, $module_prefix, $export_funcs) = ('','', []);
 
     if (exists $want{$kind}) {
       foreach my $class (@{$config->{$kind}}) {
-        ($class, $module_prefix) = ref $class ? @$class : ($class, '');
+        ($class, $module_prefix, $export_funcs) = ref $class ? @$class : ($class, '', []);
         if ($opt{module_prefix} and $module_prefix) {
           $prefix = $module_prefix;
         } elsif ($opt{prefix}) {
@@ -59,7 +59,11 @@ sub import {
         };
         unless ($evalerror) {
           my %funcs;
-          @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
+          if (@{$export_funcs || []}) {
+            @funcs{@$export_funcs} = ();
+          } else {
+            @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
+          }
           my @funcs = grep defined &{$class . '::' . $_}, keys %funcs;
           if (my $want_func = $want{$kind}) {
             my %w;
@@ -306,7 +310,6 @@ from String::CamelCase (0.01)
 from Data::Dumper (2.121)
 
  Dumper
- DumperX
 
 =head1 FUNCTIONS
 
@@ -330,6 +333,17 @@ In your code;
  use Util::Yours qw/list/;
 
 =head2 $Utils STRUCTURE
+
+ $Utils => {
+    # simply put module names
+    kind1 => [qw/Module1 Module2 ..../],
+    # Module name and its prefix
+    kind2 => [ [Module1 => 'module_prefix'], ... ],
+    # limit functions to be exported
+    kind3 => [ [Module1, 'module_prefix', [qw/func1 func2/] ], ... ],
+    # as same as above except not specify modul prefix
+    kind4 => [ [Module1, '', [qw/func1 func2/] ], ... ],
+ };
 
 Key must be lower character.
 
@@ -362,6 +376,19 @@ You can specify prefix for each module like the following.
 In your code;
 
  use Util::Yours qw/list/, {module_prefix => 1};
+
+=head1 LIMIT FUNCTIONS TO BE EXPORTED
+
+Util::Any auomaticaly export functions from modules' @EXPORT and @EXPORT_OK.
+In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
+
+So you can limit functions to be exported.
+
+ our $Utils = {
+      debug => [
+                ['Data::Dumper', '', ['Dumper']], # only Dumper method is exported.
+               ],
+ };
 
 =head1 AUTHOR
 
@@ -402,6 +429,13 @@ L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=Util-Any>
 L<http://search.cpan.org/dist/Util-Any>
 
 =back
+
+=head1 REPOSITORY
+
+  svn co http://svn.coderepos.org/share/lang/perl/Util-Any/trunk Util-Any
+
+Subversion repository of Util::Any is hosted at http://coderepos.org/share/.
+patches and collaborators are welcome.
 
 =head1 ACKNOWLEDGEMENTS
 
