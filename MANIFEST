@@ -11,6 +11,7 @@ t/pod.t
 t/01-util-kind-list.t
 t/01-util-kind-scalar.t
 t/01-util-kind-hash.t
+t/01-util-kind-debug.t
 t/01-util-kind-my.t
 t/02-util-func-scalar.t
 t/01-util-kind-all.t
@@ -18,4 +19,8 @@ t/01-util-kind-my-prefix.t
 t/02-util-func-scalar-prefix.t
 t/01-util-kind-all-prefix.t
 t/03-debug.t
+t/03-debug.t
+t/04-option.t
+t/04-option-select.t
+t/04-option-except.t
 t/lib/MyUtil.pm

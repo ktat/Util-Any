@@ -1,5 +1,9 @@
 Revision history for Util-Any
 
+0.04    2008/12/14 17:34
+	-select & -except option is added to select functions to be exported.
+        enable to rename function name.
+
 0.03    2008/12/05 15:37
         add debug option
         write document in detail
@@ -12,4 +16,3 @@ Revision history for Util-Any
 
 0.01    2008/12/03 03:13
         First version
-

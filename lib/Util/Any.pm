@@ -3,6 +3,7 @@ package Util::Any;
 use ExportTo ();
 use Carp ();
 use warnings;
+use List::MoreUtils qw/uniq/;
 use strict;
 
 our $Utils = {
@@ -41,11 +42,11 @@ sub import {
   no strict 'refs';
 
   foreach my $kind (keys %$config) {
-    my ($prefix, $module_prefix, $export_funcs) = ('','', []);
+    my ($prefix, $module_prefix, $options) = ('','', []);
 
     if (exists $want{$kind}) {
       foreach my $class (@{$config->{$kind}}) {
-        ($class, $module_prefix, $export_funcs) = ref $class ? @$class : ($class, '', []);
+        ($class, $module_prefix, $options) = ref $class ? @$class : ($class, '', []);
         if ($opt{module_prefix} and $module_prefix) {
           $prefix = $module_prefix;
         } elsif ($opt{prefix}) {
@@ -58,31 +59,36 @@ sub import {
           $evalerror = $@;
         };
         unless ($evalerror) {
-          my %funcs;
-          if (@{$export_funcs || []}) {
-            @funcs{@$export_funcs} = ();
-          } else {
-            @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
-          }
+          my $export_funcs = ref $options eq 'ARRAY' ? $options : $options->{-select};
+          my (%funcs, %rename);
+          @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
           my @funcs = grep defined &{$class . '::' . $_}, keys %funcs;
           if (my $want_func = $want{$kind}) {
             my %w;
             @w{@$want_func} = ();
             @funcs = grep exists $w{$_}, @funcs;
+          } elsif (@{$export_funcs || []}) {
+            @funcs = grep defined &{$class . '::' . $_}, @$export_funcs;
           }
-          if ($prefix) {
-            ExportTo::export_to
-                ($caller => {map {$prefix . $_ => $class . '::' . $_} @funcs});
-          } else {
-            ExportTo::export_to
-                ($caller => [map $class . '::' . $_, @funcs]);
+          if (ref $options eq 'HASH') {
+            if (exists $options->{-except}) {
+              Carp::croak "cannot use -select & -except in same time." if @{$export_funcs || []};
+              my %except;
+              @except{@{$options->{-except}}} = ();
+              @funcs = grep !exists $except{$_}, @funcs;
+            }
+            foreach my $o (grep !/^-/, keys %$options) {
+              if (defined &{$class . '::' . $o}) {
+                push @funcs , $o;
+                $rename{$o} = $options->{$o};
+              }
+            }
           }
-        } else {
-          if ($opt{debug} == 2) {
-            Carp::croak $evalerror;
-          } elsif($opt{debug}) {
-            Carp::carp $evalerror;
-          }
+          ExportTo::export_to($caller => ($prefix or %rename)
+                              ? {map {$prefix . ($rename{$_} || $_) => $class . '::' . $_} uniq @funcs}
+                              : [map $class . '::' . $_, uniq @funcs]);
+        } elsif(defined $opt{debug}) {
+          $opt{debug} == 2 ? Carp::croak $evalerror : Carp::carp $evalerror;
         }
       }
     }
@@ -95,11 +101,11 @@ Util::Any - Export any utilities and To create your own Util::Any
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 =head1 SYNOPSIS
 
@@ -145,16 +151,16 @@ Perl has many modules and they have many utility functions.
 For example, List::Util, List::MoreUtils, Scalar::Util, Hash::Util,
 String::Util, String::CamelCase, Data::Dumper etc.
 
-We, Perl users, have to memorize module name and their function name.
-Using this module, you don't need to memorize module name,
-only memorize kind of modules and function name.
+We, Perl users, have to memorize modules name and their functions name.
+Using this module, you don't need to memorize modules name,
+only memorize kinds of modules and functions name.
 
-And this module allow you to create your own utility module, easily.
+And this module allows you to create your own utility module, easily.
 You can create your own module and use this in the same way as Util::Any like the following.
 
  use YourUtil qw/list/;
 
-see C<CREATE YOUR OWN Util::Any>.
+see C<CREATE YOUR OWN Util::Any>, in detail.
 
 =head1 HOW TO USE
 
@@ -203,8 +209,8 @@ If you pass debug value, warn or die.
 =head1 EXPORT
 
 Kinds of functions and list of exported functions are below.
-Note that these modules and version are in my environment(Perl 5.8.4).
-So, it must be diffrent in your environment.
+Note that these modules and version are on my environment(Perl 5.8.4).
+So, it must be diffrent on your environment.
 
 =head2 scalar
 
@@ -311,10 +317,6 @@ from Data::Dumper (2.121)
 
  Dumper
 
-=head1 FUNCTIONS
-
-no functions.
-
 =head1 CREATE YOUR OWN Util::Any
 
 Just inherit Util::Any and define $Utils hash ref as the following.
@@ -334,6 +336,8 @@ In your code;
 
 =head2 $Utils STRUCTURE
 
+=head3 overview
+
  $Utils => {
     # simply put module names
     kind1 => [qw/Module1 Module2 ..../],
@@ -345,16 +349,17 @@ In your code;
     kind4 => [ [Module1, '', [qw/func1 func2/] ], ... ],
  };
 
-Key must be lower character.
+=head3 Key must be lower character.
 
  NG $Utils = { LIST => [qw/List::Util/]};
  OK $Utils = { list => [qw/List::Util/]};
 
-C<all> cannot be used for key.
+=head3 C<all> cannot be used for key.
 
  NG $Utils = { all => [qw/List::Util/]};
 
-Value is array ref which contained scalar or array ref.
+=head3 Value is array ref which contained scalar or array ref.
+
 Scalar is module name. Array ref is module name and its prefix.
 
  $Utils = { list => ['List::Utils'] };
@@ -377,7 +382,9 @@ In your code;
 
  use Util::Yours qw/list/, {module_prefix => 1};
 
-=head1 LIMIT FUNCTIONS TO BE EXPORTED
+=head1 OTHER WAY TO EXPORT FUNCTIONS
+
+=head1 SELECT FUNCTIONS
 
 Util::Any auomaticaly export functions from modules' @EXPORT and @EXPORT_OK.
 In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
@@ -386,9 +393,54 @@ So you can limit functions to be exported.
 
  our $Utils = {
       debug => [
-                ['Data::Dumper', '', ['Dumper']], # only Dumper method is exported.
+                ['Data::Dumper', '',
+                ['Dumper']], # only Dumper method is exported.
                ],
  };
+
+or
+
+ our $Utils = {
+      debug => [
+                ['Data::Dumper', '',
+                 { -select => ['Dumper'] }, # only Dumper method is exported.
+                ]
+               ],
+ };
+
+
+=head1 SELECT FUNCTIONS EXCEPT
+
+Inverse of -select option. Cannot use this option with -select.
+
+ our $Utils = {
+      debug => [
+                ['Data::Dumper', '',
+                 { -except => ['DumperX'] }, # export functions except DumperX
+                ]
+               ],
+ };
+
+=head1 RENAME FUNCTIONS
+
+To rename function name. Using this option with -select or -exception,
+this definition is prior to them.
+
+In the following example, 'min' is not in -select list, but can be exported.
+
+ our $Utils = {
+      list  => [
+                 [
+                  'List::Util', '',
+                  {
+                   'first' => 'list_first', # first as list_first
+                   'sum'   => 'lsum',       # sum   as lsum
+                   'min'   => 'lmin',       # min   as lmin
+                   -select => ['first', 'sum', 'shuffle'],
+                  }
+                 ]
+                ],
+  };
 
 =head1 AUTHOR
 
