@@ -134,7 +134,7 @@ Util::Any - Export any utilities and To create your own Util::Any
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
