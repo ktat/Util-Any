@@ -23,4 +23,15 @@ t/03-debug.t
 t/04-option.t
 t/04-option-select.t
 t/04-option-except.t
+t/05-util_any_base-prefix.t
+t/05-util_any_base.t
+t/06-perl6-export-attrs.t
+t/06-perl6-export-attrs2.t
+t/06-perl6-export-attrs-no-args.t
+t/07-perl6-export-attrs.t
+t/07-perl6-export-attrs2.t
+t/07-perl6-export-attrs-no-args.t
 t/lib/MyUtil.pm
+t/lib/MyUtilBase.pm
+t/lib/UtilPerl6ExportAttrs.pm
+t/lib/UtilPerl6ExportAttrsBase.pm

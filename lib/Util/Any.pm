@@ -16,11 +16,13 @@ our $Utils = {
 
 sub import {
   my $pkg = shift;
+  my $caller = (caller)[0];
+
+  return $pkg->_base_import($caller, @_) if @_ and $_[0] =~/^-\w+$/;
 
   no strict 'refs';
 
   my $config = ${$pkg . '::Utils'};
-  my $caller = (caller)[0];
   my %want;
   my %opt = (prefix => 0, module_prefix => 0, debug => 0);
 
@@ -93,7 +95,38 @@ sub import {
       }
     }
   }
+  if ($pkg->_use_perl6_export_attrs) {
+    no strict 'refs';
+    no warnings;
+    my $pkg_utils = ${$pkg . '::Utils'};
+    my @arg = defined $pkg_utils ? (grep !exists $pkg_utils->{$_}, @_)
+                                 : (grep !exists $Utils->{$_}, @_);
+    if (@_ and @arg) {
+      eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg);';
+    } elsif (!@_) {
+      eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import;';
+    }
+  }
 }
+
+sub _base_import {
+  my ($pkg, $caller, @flgs) = @_;
+  {
+    no strict 'refs';
+    push @{"${caller}::ISA"}, __PACKAGE__;
+  }
+
+  while (my $flg = shift @flgs) {
+    if (lc($flg) eq '-perl6exportattrs') {
+      eval "use Perl6::Export::Attrs ();";
+      no strict 'refs';
+      *{$caller . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
+      *{$caller . '::_use_perl6_export_attrs'} = sub { 1 };
+    }
+  }
+}
+
+sub _use_perl6_export_attrs { 0 }
 
 =head1 NAME
 
@@ -105,7 +138,7 @@ Version 0.04
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 SYNOPSIS
 
@@ -324,7 +357,7 @@ Just inherit Util::Any and define $Utils hash ref as the following.
  package Util::Yours;
  
  use Clone qw/clone/;
- use base qw/Util::Any/;
+ use Util::Any -Base; # or use base qw/Util::Any/;
  our $Utils = clone $Util::Any::Utils;
  push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
  
@@ -333,6 +366,75 @@ Just inherit Util::Any and define $Utils hash ref as the following.
 In your code;
 
  use Util::Yours qw/list/;
+
+=head1 USE Perl6::Export::Attrs in YOUR OWN UTIL MODULE
+
+Perl6::Export::Attrs overrides caller package's import method.
+So, when your module use Perl6::Export::Attrs, Util::Any cannot work.
+
+Util::Any provides option to solve this prolblem.
+Write the follwoing instead of "use Util::Any -Base" or "use base qw/Util::Any/".
+
+ use Util::Any -Perl6ExportAttrs;
+
+example;
+
+ package Util::Yours;
+ 
+ use Clone qw/clone/;
+ use Util::Any -Perl6ExportAttrs;
+ our $Utils = clone $Util::Any::Utils;
+ push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
+ 
+ sub foo :Export(:DEFAULT) {
+   return "foo!";
+ }
+ 
+ sub bar :Export(:bar) {
+   return "bar!";
+ }
+ 
+ 1;
+
+Or you can write your own import method and BEGIN block like the follwoing.
+
+ package UtilPerl6ExportAttr;
+ 
+ use strict;
+ use base qw/Util::Any/;
+ use Clone qw/clone/;
+ 
+ BEGIN {
+   use Perl6::Export::Attrs ();
+   no strict 'refs';
+   *{__PACKAGE__ . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
+ }
+ 
+ our $Utils = clone $Util::Any::Utils;
+ $Utils->{your_list} = [
+                  ['List::Util', '', [qw(first min sum)]],
+                 ];
+ 
+ sub import {
+   my $pkg = shift;
+   my $caller = (caller)[0];
+ 
+   no strict 'refs';
+   eval "package $caller; $pkg" . '->Util::Any::import(@_);';
+   my @arg = grep !exists $Utils->{$_}, @_;
+   if (@_ and @arg) {
+     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg)';
+   } elsif (!@_) {
+     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import';
+   }
+   return;
+ }
+ 
+ sub foo :Export(:DEFAULT) {
+   return "foo!";
+ }
+ 
+ 1;
 
 =head2 $Utils STRUCTURE
 
