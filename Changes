@@ -1,5 +1,8 @@
 Revision history for Util-Any
 
+0.06    2009/03/22 14:55
+        support Exporter and Exporter::Simple
+
 0.05    2009/03/22 02:35
         solve the problem using Util::Any with Perl6::Export::Atttrs
         new feature to inherit Util::Any(-Base and -Perl6ExportAttrs)

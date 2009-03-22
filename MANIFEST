@@ -31,7 +31,15 @@ t/06-perl6-export-attrs-no-args.t
 t/07-perl6-export-attrs.t
 t/07-perl6-export-attrs2.t
 t/07-perl6-export-attrs-no-args.t
+t/08-exporter-simple.t
+t/08-exporter-simple2.t
+t/08-exporter-simple-no-args.t
+t/09-exporter.t
+t/09-exporter2.t
+t/09-exporter-no-args.t
 t/lib/MyUtil.pm
 t/lib/MyUtilBase.pm
 t/lib/UtilPerl6ExportAttrs.pm
 t/lib/UtilPerl6ExportAttrsBase.pm
+t/lib/UtilExporter.pm
+t/lib/UtilExporterSimple.pm

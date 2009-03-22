@@ -41,10 +41,8 @@ sub import {
     }
   }
 
-  no strict 'refs';
-
   foreach my $kind (keys %$config) {
-    my ($prefix, $module_prefix, $options) = ('','', []);
+    my ($prefix, $module_prefix, $options) = ('', '', []);
 
     if (exists $want{$kind}) {
       foreach my $class (@{$config->{$kind}}) {
@@ -63,6 +61,7 @@ sub import {
         unless ($evalerror) {
           my $export_funcs = ref $options eq 'ARRAY' ? $options : $options->{-select};
           my (%funcs, %rename);
+          no strict 'refs';
           @funcs{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
           my @funcs = grep defined &{$class . '::' . $_}, keys %funcs;
           if (my $want_func = $want{$kind}) {
@@ -95,16 +94,21 @@ sub import {
       }
     }
   }
-  if ($pkg->_use_perl6_export_attrs) {
+  my $import_module = $pkg->_use_import_module;
+  if ($import_module) {
     no strict 'refs';
     no warnings;
     my $pkg_utils = ${$pkg . '::Utils'};
     my @arg = defined $pkg_utils ? (grep !exists $pkg_utils->{$_}, @_)
                                  : (grep !exists $Utils->{$_}, @_);
-    if (@_ and @arg) {
-      eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg);';
-    } elsif (!@_) {
-      eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import;';
+    if ((@_ and @arg) or !@_) {
+      if ($import_module eq 'Perl6::Export::Attrs') {
+        eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg);';
+      } elsif ($import_module eq 'Exporter::Simple') {
+        eval "package $caller; $pkg" . '->Exporter::Simple::import(@arg);';
+      } elsif ($import_module eq 'Exporter') {
+        eval "package $caller; $pkg" . '->Exporter::import(@arg);';
+      }
     }
   }
 }
@@ -115,30 +119,39 @@ sub _base_import {
     no strict 'refs';
     push @{"${caller}::ISA"}, __PACKAGE__;
   }
+  my @unknown;
 
-  while (my $flg = shift @flgs) {
-    if (lc($flg) eq '-perl6exportattrs') {
+  while (my $flg = lc shift @flgs) {
+    no strict 'refs';
+    if ($flg eq '-perl6exportattrs') {
       eval "use Perl6::Export::Attrs ();";
-      no strict 'refs';
       *{$caller . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
-      *{$caller . '::_use_perl6_export_attrs'} = sub { 1 };
+      *{$caller . '::_use_import_module'} = sub { 'Perl6::Export::Attrs' };
+    } elsif ($flg eq '-exportersimple') {
+      eval "use Exporter::Simple ();";
+      *{$caller . '::_use_import_module'} = sub { 'Exporter::Simple' };
+    } elsif ($flg eq '-exporter') {
+      use Exporter ();
+      push @{"${caller}::ISA"}, 'Exporter';
+      *{$caller . '::_use_import_module'} = sub { 'Exporter' };
+    } elsif ($flg eq '-base') {
+      # nothing to do
+    } else {
+      push @unknown, $flg;
     }
   }
+  Carp::croak "cannot understand the option: @unknown" if @unknown;
 }
 
-sub _use_perl6_export_attrs { 0 }
+sub _use_import_module { 0 }
 
 =head1 NAME
 
 Util::Any - Export any utilities and To create your own Util::Any
 
-=head1 VERSION
-
-Version 0.05
-
 =cut
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 =head1 SYNOPSIS
 
@@ -367,75 +380,6 @@ In your code;
 
  use Util::Yours qw/list/;
 
-=head1 USE Perl6::Export::Attrs in YOUR OWN UTIL MODULE
-
-Perl6::Export::Attrs overrides caller package's import method.
-So, when your module use Perl6::Export::Attrs, Util::Any cannot work.
-
-Util::Any provides option to solve this prolblem.
-Write the follwoing instead of "use Util::Any -Base" or "use base qw/Util::Any/".
-
- use Util::Any -Perl6ExportAttrs;
-
-example;
-
- package Util::Yours;
- 
- use Clone qw/clone/;
- use Util::Any -Perl6ExportAttrs;
- our $Utils = clone $Util::Any::Utils;
- push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
- 
- sub foo :Export(:DEFAULT) {
-   return "foo!";
- }
- 
- sub bar :Export(:bar) {
-   return "bar!";
- }
- 
- 1;
-
-Or you can write your own import method and BEGIN block like the follwoing.
-
- package UtilPerl6ExportAttr;
- 
- use strict;
- use base qw/Util::Any/;
- use Clone qw/clone/;
- 
- BEGIN {
-   use Perl6::Export::Attrs ();
-   no strict 'refs';
-   *{__PACKAGE__ . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
- }
- 
- our $Utils = clone $Util::Any::Utils;
- $Utils->{your_list} = [
-                  ['List::Util', '', [qw(first min sum)]],
-                 ];
- 
- sub import {
-   my $pkg = shift;
-   my $caller = (caller)[0];
- 
-   no strict 'refs';
-   eval "package $caller; $pkg" . '->Util::Any::import(@_);';
-   my @arg = grep !exists $Utils->{$_}, @_;
-   if (@_ and @arg) {
-     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg)';
-   } elsif (!@_) {
-     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import';
-   }
-   return;
- }
- 
- sub foo :Export(:DEFAULT) {
-   return "foo!";
- }
- 
- 1;
-
 =head2 $Utils STRUCTURE
 
 =head3 overview
@@ -469,7 +413,7 @@ Scalar is module name. Array ref is module name and its prefix.
 
 see L<PREFIX FOR EACH MODULE>
 
-=head1 PREFIX FOR EACH MODULE
+=head2 PREFIX FOR EACH MODULE
 
 If you want to import many modules and they have same function name.
 You can specify prefix for each module like the following.
@@ -484,9 +428,9 @@ In your code;
 
  use Util::Yours qw/list/, {module_prefix => 1};
 
-=head1 OTHER WAY TO EXPORT FUNCTIONS
+=head2 OTHER WAY TO EXPORT FUNCTIONS
 
-=head1 SELECT FUNCTIONS
+=head2 SELECT FUNCTIONS
 
 Util::Any auomaticaly export functions from modules' @EXPORT and @EXPORT_OK.
 In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
@@ -511,7 +455,7 @@ or
  };
 
 
-=head1 SELECT FUNCTIONS EXCEPT
+=head2 SELECT FUNCTIONS EXCEPT
 
 Inverse of -select option. Cannot use this option with -select.
 
@@ -523,7 +467,7 @@ Inverse of -select option. Cannot use this option with -select.
                ],
  };
 
-=head1 RENAME FUNCTIONS
+=head2 RENAME FUNCTIONS
 
 To rename function name. Using this option with -select or -exception,
 this definition is prior to them.
@@ -543,6 +487,94 @@ In the following example, 'min' is not in -select list, but can be exported.
                  ]
                 ],
   };
+
+
+=head1 WORKING WITH EXPORTER-LIKE MODULES
+
+CPAN has some modules to export functions.
+Util::Any can work with some of such modules, L<Exporter>, L<Exporter::Simple> and L<Perl6::Export::Attrs>.
+If you want to use other modules, please inform me or implement import method by yourself.
+
+If you want to use module mentioned above, you have to change the way to inherit these modules.
+
+=head2 ALTERNATIVE INHERITING
+
+Normaly, you use;
+
+ use Util::Any -Base; # or "use base qw/Util::Any/;"
+
+But, if you want to use L<Exporter>, L<Exporter::Simple> or L<Perl6::Export::Attrs>.
+write as the following, instead.
+
+ # if you want to use Exporter
+ use Util::Any -Exporter;
+ # if you want to use Exporter::Simple
+ use Util::Any -ExporterSimple;
+ # if you want to use Perl6::Export::Attrs
+ use Util::Any -Perl6ExportAttrs;
+
+That's all.
+Note that don't use base the above modules in your utility module.
+
+=head3 EXAMPLE to USE Perl6::Export::Attrs in YOUR OWN UTIL MODULE
+
+ package Util::Yours;
+ 
+ use Clone qw/clone/;
+ use Util::Any -Perl6ExportAttrs;
+ our $Utils = clone $Util::Any::Utils;
+ push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
+ 
+ sub foo :Export(:DEFAULT) {
+   return "foo!";
+ }
+ 
+ sub bar :Export(:bar) {
+   return "bar!";
+ }
+ 
+ 1;
+
+=head2 IMPLEMENT IMPORT by YOURSELF
+
+You can write your own import method and BEGIN block like the following.
+Instead of using "use Util::Any -Perl6ExportAttrs".
+
+ package UtilPerl6ExportAttr;
+ 
+ use strict;
+ use base qw/Util::Any/;
+ use Clone qw/clone/;
+ 
+ BEGIN {
+   use Perl6::Export::Attrs ();
+   no strict 'refs';
+   *{__PACKAGE__ . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
+ }
+ 
+ our $Utils = clone $Util::Any::Utils;
+ $Utils->{your_list} = [
+                  ['List::Util', '', [qw(first min sum)]],
+                 ];
+ 
+ sub import {
+   my $pkg = shift;
+   my $caller = (caller)[0];
+ 
+   no strict 'refs';
+   eval "package $caller; $pkg" . '->Util::Any::import(@_);';
+   my @arg = grep !exists $Utils->{$_}, @_;
+   if ((@_ and @arg) or !@_) {
+     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg)';
+   }
+   return;
+ }
+ 
+ sub foo :Export(:DEFAULT) {
+   return "foo!";
+ }
+ 
+ 1;
 
 =head1 AUTHOR
 
