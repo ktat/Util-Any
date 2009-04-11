@@ -27,7 +27,7 @@ ok(defined &list_first, 'defined first as list_first');
 ok(defined &lsum, 'defined sum as lsum');
 ok(defined &lmin, 'defined min as lmin but not in select');
 ok(defined &shuffle, 'not defined shuffle');
-ok(!defined &min, 'defined min');
-ok(!defined &minstr, 'defined minstr');
+ok(!defined &min,    'not defined min');
+ok(!defined &minstr, 'not defined minstr');
 ok(!defined &reduce, 'not defined reduce');
 
