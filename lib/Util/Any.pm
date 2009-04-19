@@ -35,7 +35,7 @@ sub import {
 
     foreach my $class (@{$config->{$kind}}) { # $class is class name or array ref
       my @funcs = @{$funcs->{$kind} || []};
-      ($class, $module_prefix, $options) = ref $class ? @$class : ($class, '', []);
+      ($class, $module_prefix, $options) = @$class if ref $class;
       $prefix = $kind_prefix                             ? $kind_prefix   :
                 ($opt{module_prefix} and $module_prefix) ? $module_prefix :
                 $opt{prefix}                             ? lc($kind) . '_': '';
@@ -56,7 +56,15 @@ sub import {
           @funcs =  @{_all_funcs_in_class($class)};
         }
         foreach my $o (grep !/^-/, keys %$options) {
-          if (defined &{$class . '::' . $o}) {
+          if (ref $options->{$o} eq 'CODE') {
+            my $gen = $options->{$o};
+            foreach my $def (@{$local_definition->{$o}}) {
+              my %arg;
+              $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
+              ExportTo::export_to($caller => {delete $def->{-as} => $gen->($pkg, $class, $o, \%arg)});
+            }
+
+          } elsif (defined &{$class . '::' . $o}) {
             push @funcs , $o;
             $rename{$o} = $options->{$o};
           }
@@ -65,6 +73,7 @@ sub import {
         push @funcs, @$options;
       }
       $pkg->_do_export($caller, $class, \@funcs, $local_definition, \%rename, $prefix);
+    }
   }
 }
 
@@ -81,31 +90,31 @@ sub _do_export {
   my @export_funcs = @$funcs ? @$funcs : @{_all_funcs_in_class($class)};
   if (%$local_definition) {
     foreach my $func (keys %$local_definition) {
-        foreach my $def (@{$local_definition->{$func}}) {
-          my $local_rename = delete $def->{-as} || '';
+      foreach my $def (@{$local_definition->{$func}}) {
+        my $local_rename = delete $def->{-as} || '';
+        unless (%$def) {
           ExportTo::export_to
               ($caller =>
                {
                 ($local_rename ? $local_rename : $prefix ? $prefix . $func : $func)
-                  => %$def ? sub { no strict 'refs'; &{$class . '::' . $func}(%$def, @_) }
-                         : $class . '::' . $func
+                              => $class . '::' . $func
                });
         }
       }
-      @export_funcs = grep !exists $local_definition->{$_}, @export_funcs;
     }
-    ExportTo::export_to($caller => ($prefix or %$rename)
-                        ? {map {($prefix . ($rename->{$_} || $_)) => $class . '::' . $_} @export_funcs}
-                        : [map $class . '::' . $_, uniq @export_funcs]);
+    @export_funcs = grep !exists $local_definition->{$_}, @export_funcs;
   }
+  ExportTo::export_to($caller => ($prefix or %$rename)
+                      ? {map {($prefix . ($rename->{$_} || $_)) => $class . '::' . $_} @export_funcs}
+                      : [map $class . '::' . $_, uniq @export_funcs]);
 }
 
 sub _insert_want_arg {
-  my ($config, $f, $setting, $want, $arg) = @_;
-  my $lf = lc $f;
-  exists $config->{$lf} ?
-    $want->{$lf} = $setting :
-    push @$arg, $f, defined $setting ? $setting : ();
+  my ($config, $kind, $setting, $want, $arg) = @_;
+  my $kind = lc $f;
+  exists $config->{$kind} ?
+    $want->{$kind} = $setting:
+    push @$arg, $kind, defined $setting ? $setting : ();
 }
 
 sub _arrange_args {
@@ -500,7 +509,9 @@ In your code;
 
 =head3 C<all> cannot be used for key.
 
- NG $Utils = { all => [qw/List::Util/]};
+ NG $Utils = { all    => [qw/List::Util/]};
+ NG $Utils = { -all   => [qw/List::Util/]};
+ NG $Utils = { ':all' => [qw/List::Util/]};
 
 =head3 Value is array ref which contained scalar or array ref.
 
@@ -588,7 +599,7 @@ In the following example, 'min' is not in -select list, but can be exported.
 
 =head2 EXPORTING LIKE Sub::Exporter
 
-It's experimental featrue. not enough tested. and only support '-prefix', '-as' and pass default args.
+It's experimental featrue. not enough tested. and only support '-prefix' and '-as'.
 
  use UtilSubExporter list => {-prefix => 'list__', min => {-as => "list___min"}},
                      # The following is normal Sub::Exporter importing
@@ -597,6 +608,9 @@ It's experimental featrue. not enough tested. and only support '-prefix', '-as' 
 
 Check t/lib/UtilSubExporter.pm, t/10-sub-exporter-like-epxort.t and  t/12-sub-exporter-like-export.t
 
+=head3 Sub::Exporter's generator way
+
+It's experimental feature, not enough tested.
 
 =head1 WORKING WITH EXPORTER-LIKE MODULES
 
@@ -605,6 +619,14 @@ Util::Any can work with some of such modules, L<Exporter>, L<Exporter::Simple>, 
 If you want to use other modules, please inform me or implement import method by yourself.
 
 If you want to use module mentioned above, you have to change the way to inherit these modules.
+
+=head2 DIFFERENCE between 'all' and '-all' or ':all'
+
+If your utility module which inherited Util::Any has utility functions and export them by Exporter-like module,
+behavior of 'all' and '-all' or ':all' is a bit different.
+
+ 'all' ... export all utilities defined in your package's $Utils variables.
+ '-all' or ':all' ... export all utilities including functions in your util module itself.
 
 =head2 ALTERNATIVE INHERITING
 
