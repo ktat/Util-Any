@@ -111,7 +111,7 @@ sub _do_export {
 
 sub _insert_want_arg {
   my ($config, $kind, $setting, $want, $arg) = @_;
-  my $kind = lc $f;
+  $kind = lc $kind;
   exists $config->{$kind} ?
     $want->{$kind} = $setting:
     push @$arg, $kind, defined $setting ? $setting : ();
