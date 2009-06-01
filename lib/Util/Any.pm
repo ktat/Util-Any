@@ -1,6 +1,7 @@
 package Util::Any;
 
 use ExportTo ();
+use Clone ();
 use Carp ();
 use warnings;
 use List::MoreUtils qw/uniq any/;
@@ -13,6 +14,8 @@ our $Utils = {
               debug  => [ ['Data::Dumper', '', ['Dumper']] ],
               string => [ qw/String::Util String::CamelCase/ ],
              };
+# I'll delete no dash group in the above, in future.
+$Utils->{'-' . $_} = $Utils->{$_} foreach keys %$Utils;
 
 our $SubExporterImport = 'do_import';
 
@@ -26,7 +29,7 @@ sub import {
     pop @_ unless %{$_[-1]};
   }
 
-  my $config = do { no strict 'refs'; ${$pkg . '::Utils'} };
+  my $config = Clone::clone(do { no strict 'refs'; ${$pkg . '::Utils'} });
   my ($arg, $want) = $pkg->_arrange_args(\@_, $config, $caller);
   foreach my $kind (keys %$want) {
     my ($prefix, $module_prefix, $options) = ('', '', []);
@@ -260,21 +263,21 @@ our $VERSION = '0.07';
 
 =head1 SYNOPSIS
 
-    use Util::Any qw/list/;
+    use Util::Any -list;
     # you can import any functions of List::Util and List::MoreUtils
     
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to choose functions
 
-    use Util::Any {list => qw/uniq/};
+    use Util::Any {-list => qw/uniq/};
     # you can import uniq function, not import other functions
     
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to import All kind of utility functions
 
-    use Util::Any qw/all/;
+    use Util::Any -all;
     
     my $o = bless {};
     my %hash = (a => 1, b => 2);
@@ -287,9 +290,9 @@ If you want to import All kind of utility functions
 
 If you want to import functions with prefix(ex. list_, scalar_, hash_)
 
-    use Util::Any qw/all/, {prefix => 1};
-    use Util::Any qw/list/, {prefix => 1};
-    use Util::Any {list => ['uniq']}, {prefix => 1};
+    use Util::Any -all, {prefix => 1};
+    use Util::Any -list, {prefix => 1};
+    use Util::Any {-list => ['uniq']}, {prefix => 1};
     
     print list_uniq qw/1, 0, 1, 2, 3, 3/;
 
