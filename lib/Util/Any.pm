@@ -23,9 +23,9 @@ sub import {
   my ($pkg, $caller) = (shift, (caller)[0]);
   return $pkg->_base_import($caller, @_) if @_ and $_[0] =~/^-[A-Z]\w+$/;
 
-  my %opt = (prefix => 0, module_prefix => 0, debug => 0);
+  my %opt = (prefix => 0, module_prefix => 0, debug => 0, smart_rename => 0);
   if (@_ > 1 and ref $_[-1] eq 'HASH') {
-    @opt{qw/prefix module_prefix debug/} = (delete @{$_[-1]}{qw/prefix module_prefix debug/});
+    @opt{qw/prefix module_prefix debug smart_rename/} = (delete @{$_[-1]}{qw/prefix module_prefix debug smart_rename/});
     pop @_ unless %{$_[-1]};
   }
 
@@ -39,9 +39,11 @@ sub import {
     foreach my $class (@{$config->{$kind}}) { # $class is class name or array ref
       my @funcs = @{$funcs->{$kind} || []};
       ($class, $module_prefix, $options) = @$class if ref $class;
+      my $k = lc(join "", $kind =~m{(\w+)}g);
       $prefix = $kind_prefix                             ? $kind_prefix   :
                 ($opt{module_prefix} and $module_prefix) ? $module_prefix :
-                $opt{prefix}                             ? lc(join "",$kind =~m{(\w+)}g) . '_': '';
+                 $opt{prefix}                            ? lc($k) . '_'   :
+                 $opt{smart_rename}                      ? $pkg->_create_smart_rename($k) : '';
 
       my $evalerror = '';
       if ($evalerror = do { local $@; eval "require $class"; $evalerror = $@ }) {
@@ -80,6 +82,22 @@ sub import {
   }
 }
 
+sub _create_smart_rename {
+  my ($pkg, $k) = @_;
+  return sub {
+    my $str = shift;
+    my $prefix = '';
+    if ($str =~s{^(is_|has_|enable_|disable_|isnt_|have_|set_)}{}) {
+      $prefix = $1;
+    }
+    if ($str !~ m{^$k} and $str !~ m{$k$}) {
+      return $prefix . $k . '_' . $str;
+    } else {
+      return $prefix . $str;
+    }
+  };
+}
+
 sub _all_funcs_in_class {
   my ($class) = @_;
   my %f;
@@ -99,7 +117,7 @@ sub _do_export {
           ExportTo::export_to
               ($caller =>
                {
-                ($local_rename ? $local_rename : $prefix ? $prefix . $func : $func)
+                ($local_rename ? $local_rename : $prefix ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) : $func)
                               => $class . '::' . $func
                });
         }
@@ -108,7 +126,7 @@ sub _do_export {
     @export_funcs = grep !exists $local_definition->{$_}, @export_funcs;
   }
   ExportTo::export_to($caller => ($prefix or %$rename)
-                      ? {map {($prefix . ($rename->{$_} || $_)) => $class . '::' . $_} @export_funcs}
+                      ? {map {(ref $prefix ne 'CODE' ? $prefix . ($rename->{$_} || $_) : $prefix->($_)) => $class . '::' . $_} @export_funcs}
                       : [map $class . '::' . $_, uniq @export_funcs]);
 }
 
@@ -259,7 +277,7 @@ Util::Any - to export any utilities and to create your own Utilitie module
 
 =cut
 
-our $VERSION = '0.09';
+our $VERSION = '0.10';
 
 =head1 SYNOPSIS
 
@@ -349,6 +367,10 @@ add kind prefix to function name.
 
 see L<PREFIX FOR EACH MODULE>.
 Uti::Any itself doesn't have such a definition.
+
+=item smart_rename => 1
+
+see L<SMART RENAME FOR EACH KIND>.
 
 =item debug => 1/2
 
@@ -539,6 +561,35 @@ You can specify prefix for each module like the following.
 In your code;
 
  use Util::Yours qw/list/, {module_prefix => 1};
+
+=head2 SMART RENAME FOR EACH KIND
+
+smart_rename option renmae function name by a little smart way.
+For example,
+
+ our $Utils = {
+   utf8 => [['utf8', '',
+             {
+              is_utf8   => 'is_utf8',
+              upgrade   => 'utf8_upgrade',
+              downgrade => 'downgrade',
+             }
+            ]],
+ };
+
+In this definition, use C<prefix => 1> is not good idea. If you use it:
+
+ is_utf8      => utf8_is_utf8
+ utf8_upgrade => utf8_utf8_upgrade
+ downgrade    => utf8_downgrade
+
+That's too bad. If you use C<smart_rename => 1> instead:
+
+ is_utf8      => is_utf8
+ utf8_upgrade => utf8_upgrade
+ downgrade    => utf8_downgrade
+
+rename rule is represented in _create_smart_rename in Util::Any.
 
 =head2 OTHER WAY TO EXPORT FUNCTIONS
 
