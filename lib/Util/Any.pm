@@ -273,7 +273,7 @@ sub _use_import_module { 0 }
 
 =head1 NAME
 
-Util::Any - to export any utilities and to create your own Utilitie module
+Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 

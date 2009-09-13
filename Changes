@@ -1,6 +1,6 @@
 Revision history for Util-Any
 
-0.10    2009/09/13 08:17
+0.10    2009/09/13 08:54
 	add option smart_rename.
 
 0.09    2009/09/13 03:31
@@ -12,6 +12,7 @@ Revision history for Util-Any
 
 0.07    2009/04/12 03:58
         Fix bug when inheriting
+        Thanks to Rechard Jelinek
 
 0.06    2009/03/22 14:55
         support Exporter and Exporter::Simple

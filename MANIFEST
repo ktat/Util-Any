@@ -32,6 +32,7 @@ t/04-option-select.t
 t/04-option-except.t
 t/05-util_any_base-prefix.t
 t/05-util_any_base.t
+t/05-smart-rename.t
 t/06-perl6-export-attrs.t
 t/06-perl6-export-attrs2.t
 t/06-perl6-export-attrs-no-args.t
@@ -52,6 +53,7 @@ t/11-sub-exporter-full-all.t
 t/12-sub-exporter-like-export.t
 t/13-inherit.t
 t/lib/MyUtil.pm
+t/lib/SmartRename.pm
 t/lib/MyUtilBase.pm
 t/lib/UtilPerl6ExportAttrs.pm
 t/lib/UtilPerl6ExportAttrsBase.pm
