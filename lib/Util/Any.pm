@@ -41,7 +41,7 @@ sub import {
       ($class, $module_prefix, $options) = @$class if ref $class;
       $prefix = $kind_prefix                             ? $kind_prefix   :
                 ($opt{module_prefix} and $module_prefix) ? $module_prefix :
-                $opt{prefix}                             ? lc($kind) . '_': '';
+                $opt{prefix}                             ? lc(join "",$kind =~m{(\w+)}g) . '_': '';
 
       my $evalerror = '';
       if ($evalerror = do { local $@; eval "require $class"; $evalerror = $@ }) {
@@ -255,11 +255,11 @@ sub _use_import_module { 0 }
 
 =head1 NAME
 
-Util::Any - Export any utilities and To create your own Util::Any
+Util::Any - to export any utilities and to create your own Utilitie module
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.09';
 
 =head1 SYNOPSIS
 
@@ -312,7 +312,7 @@ only memorize kinds of modules and functions name.
 And this module allows you to create your own utility module, easily.
 You can create your own module and use this in the same way as Util::Any like the following.
 
- use YourUtil qw/list/;
+ use YourUtil -list;
 
 see C<CREATE YOUR OWN Util::Any>, in detail.
 
@@ -320,13 +320,13 @@ see C<CREATE YOUR OWN Util::Any>, in detail.
 
 =head2 use Util::Any (KIND)
 
- use Util::Any qw/list hash/;
+ use Util::Any -list, -hash;
 
 Give list of kinds of modules. All functions in moduls are exporeted.
 
 =head2  use Util::Any {KIND => [FUNCTIONS], ...};
 
- use Util::Any {list => ['uniq'], hash => ['lock_keys']};
+ use Util::Any {-list => ['uniq'], -hash => ['lock_keys']};
 
 Give hash ref whose key is kind and value is function names.
 Selected functions are exported.
@@ -341,7 +341,7 @@ Util::Any can take last argument as option, which should be hash ref.
 
 add kind prefix to function name.
 
- use Util::Any qw/list/, {prefix => 1};
+ use Util::Any -list, {prefix => 1};
  
  list_uniq(1,2,3,4,5); # it is List::More::Utils's uniq function
 
@@ -355,8 +355,8 @@ Uti::Any itself doesn't have such a definition.
 Util::Any doesn't say anything when loading module fails.
 If you pass debug value, warn or die.
 
- use Util::Any qw/list/, {debug => 1}; # warn
- use Util::Any qw/list/, {debug => 2}; # die
+ use Util::Any -list, {debug => 1}; # warn
+ use Util::Any -list, {debug => 2}; # die
 
 =back
 
@@ -480,13 +480,13 @@ Just inherit Util::Any and define $Utils hash ref as the following.
  use Clone qw/clone/;
  use Util::Any -Base; # or use base qw/Util::Any/;
  our $Utils = clone $Util::Any::Utils;
- push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
+ push @{$Utils->{-list}}, qw/Your::Favorite::List::Utils/;
  
  1;
 
 In your code;
 
- use Util::Yours qw/list/;
+ use Util::Yours -list;
 
 =head2 $Utils STRUCTURE
 
@@ -494,13 +494,13 @@ In your code;
 
  $Utils => {
     # simply put module names
-    kind1 => [qw/Module1 Module2 ..../],
-    # Module name and its prefix
-    kind2 => [ [Module1 => 'module_prefix'], ... ],
+    -kind1 => [qw/Module1 Module2 ..../],
+    -# Module name and its prefix
+    -kind2 => [ [Module1 => 'module_prefix'], ... ],
     # limit functions to be exported
-    kind3 => [ [Module1, 'module_prefix', [qw/func1 func2/] ], ... ],
+    -kind3 => [ [Module1, 'module_prefix', [qw/func1 func2/] ], ... ],
     # as same as above except not specify modul prefix
-    kind4 => [ [Module1, '', [qw/func1 func2/] ], ... ],
+    -kind4 => [ [Module1, '', [qw/func1 func2/] ], ... ],
  };
 
 =head3 Key must be lower character.
@@ -546,11 +546,12 @@ In your code;
 
 Util::Any auomaticaly export functions from modules' @EXPORT and @EXPORT_OK.
 In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
+Thease 2 functions are same feature.
 
 So you can limit functions to be exported.
 
  our $Utils = {
-      debug => [
+      -debug => [
                 ['Data::Dumper', '',
                 ['Dumper']], # only Dumper method is exported.
                ],
@@ -559,7 +560,7 @@ So you can limit functions to be exported.
 or
 
  our $Utils = {
-      debug => [
+      -debug => [
                 ['Data::Dumper', '',
                  { -select => ['Dumper'] }, # only Dumper method is exported.
                 ]
@@ -572,7 +573,7 @@ or
 Inverse of -select option. Cannot use this option with -select.
 
  our $Utils = {
-      debug => [
+      -debug => [
                 ['Data::Dumper', '',
                  { -except => ['DumperX'] }, # export functions except DumperX
                 ]
@@ -587,7 +588,7 @@ this definition is prior to them.
 In the following example, 'min' is not in -select list, but can be exported.
 
  our $Utils = {
-      list  => [
+      -list  => [
                  [
                   'List::Util', '',
                   {
@@ -602,11 +603,11 @@ In the following example, 'min' is not in -select list, but can be exported.
 
 =head2 EXPORTING LIKE Sub::Exporter
 
-It's experimental featrue. not enough tested. and only support '-prefix' and '-as'.
+This featrue is not enough tested. and only support '-prefix' and '-as'.
 
- use UtilSubExporter list => {-prefix => 'list__', min => {-as => "list___min"}},
+ use UtilSubExporter -list => {-prefix => 'list__', min => {-as => "list___min"}},
                      # The following is normal Sub::Exporter importing
-                     -greet => {-prefix => "greet_"},
+                     greet => {-prefix => "greet_"},
                      'askme' => {-as => "ask_me"};
 
 Check t/lib/UtilSubExporter.pm, t/10-sub-exporter-like-epxort.t and  t/12-sub-exporter-like-export.t
@@ -794,11 +795,15 @@ The following modules can work with Util::Any.
 
 L<Exporter>, L<Exporter::Simple>, L<Sub::Exporter> and L<Perl6::Export::Attrs>.
 
+Now I try to make L<Util::All> module based on Util::Any. see the following URL.
+
+ http://github.com/ktat/Util-All
+
 =head1 ACKNOWLEDGEMENTS
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Ktat, all rights reserved.
+Copyright 2008-2009 Ktat, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

@@ -8,6 +8,8 @@ t/00-load.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
+t/01-unit.t
+t/01-util.t
 t/01-util-kind-list.t
 t/01-util-kind-scalar.t
 t/01-util-kind-hash.t
@@ -21,6 +23,7 @@ t/02-util-func-scalar.t
 t/01-util-kind-all.t
 t/01-util-kind-my-prefix.t
 t/02-util-func-scalar-prefix.t
+t/02-util-func-scalar-prefix-sign.t
 t/01-util-kind-all-prefix.t
 t/03-debug.t
 t/03-debug.t
@@ -47,6 +50,7 @@ t/10-sub-exporter-no-args.t
 t/11-sub-exporter-all.t
 t/11-sub-exporter-full-all.t
 t/12-sub-exporter-like-export.t
+t/13-inherit.t
 t/lib/MyUtil.pm
 t/lib/MyUtilBase.pm
 t/lib/UtilPerl6ExportAttrs.pm
@@ -56,3 +60,7 @@ t/lib/UtilExporterSimple.pm
 t/lib/UtilSubExporter.pm
 t/lib/UtilSubExporter2.pm
 t/lib/exampleHello.pm
+t/lib/Inherit.pm
+t/lib/InheritSub.pm
+t/lib/One.pm
+t/lib/Two.pm

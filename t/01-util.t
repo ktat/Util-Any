@@ -47,3 +47,28 @@ for my $test (@tests) {
   is_deeply($want, $ret->[1]);
 }
 
+my @isa = @main::ISA;
+Util::Any::_base_import('Util::Any', 'main', '-base');
+is($main::ISA[-1], 'Util::Any', 'isa');
+ok(!defined &main::_use_import_module, 'not defined');
+@main::ISA = @isa;
+
+foreach my $m (['-Exporter'        , 'Exporter'            ],
+               ['-ExporterSimple'  , 'Exporter::Simple'    ],
+               ['-SubExporter'     , 'Sub::Exporter'       ],
+               ['-Perl6ExportAttrs', 'Perl6::Export::Attrs'],
+              ) {
+  Util::Any::_base_import('Util::Any', 'main', $m->[0]);
+  my $file = $m->[1] . '.pm';
+  $file =~s{::}{/}g;
+  ok(exists $main::INC{$file}, $file);
+  is(&main::_use_import_module(), $m->[1], $m->[1]);
+  undef &main::_use_import_module;
+  @main::ISA = @isa;
+}
+
+eval {
+  Util::Any::_base_import('Util::Any', 'main', "Hoge");
+};
+
+ok($@ =~ /cannot understand/, 'unknown option');
