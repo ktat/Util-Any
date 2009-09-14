@@ -1,9 +1,9 @@
 Revision history for Util-Any
 
-0.10    2009/09/13 08:54
+0.10    2009/09/14 11:47
 	add option smart_rename.
 
-0.09    2009/09/13 03:31
+0.09    2009/09/14 03:31
 	Fix bug, prefix doesn't work when using '-kind' style.
 
 0.08    2009/09/11 15:58

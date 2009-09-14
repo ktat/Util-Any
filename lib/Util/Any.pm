@@ -83,15 +83,15 @@ sub import {
 }
 
 sub _create_smart_rename {
-  my ($pkg, $k) = @_;
+  my ($pkg, $kind) = @_;
   return sub {
     my $str = shift;
     my $prefix = '';
     if ($str =~s{^(is_|has_|enable_|disable_|isnt_|have_|set_)}{}) {
       $prefix = $1;
     }
-    if ($str !~ m{^$k} and $str !~ m{$k$}) {
-      return $prefix . $k . '_' . $str;
+    if ($str !~ m{^$kind} and $str !~ m{$kind$}) {
+      return $prefix . $kind . '_' . $str;
     } else {
       return $prefix . $str;
     }
@@ -493,6 +493,17 @@ from Data::Dumper (2.121)
 
  Dumper
 
+=head1 EXPORTING LIKE Sub::Exporter
+
+This featrue is not enough tested. and only support '-prefix' and '-as'.
+
+ use UtilSubExporter -list => {-prefix => 'list__', min => {-as => "list___min"}},
+                     # The following is normal Sub::Exporter importing
+                     greet => {-prefix => "greet_"},
+                     'askme' => {-as => "ask_me"};
+
+Check t/lib/UtilSubExporter.pm, t/10-sub-exporter-like-epxort.t and  t/12-sub-exporter-like-export.t
+
 =head1 CREATE YOUR OWN Util::Any
 
 Just inherit Util::Any and define $Utils hash ref as the following.
@@ -591,9 +602,16 @@ That's too bad. If you use C<smart_rename => 1> instead:
 
 rename rule is represented in _create_smart_rename in Util::Any.
 
+=head2 CHANGE smart_rename BEHAVIOER
+
+To define _create_smart_rename, you can change smart_rename behavior.
+_create_smart_rename get 2 argument, package name and kind of utilitiy,
+and should return code reference which get function name and return new name.
+As an example, see Util::Any's _create_smart_rename.
+
 =head2 OTHER WAY TO EXPORT FUNCTIONS
 
-=head2 SELECT FUNCTIONS
+=head3 SELECT FUNCTIONS
 
 Util::Any auomaticaly export functions from modules' @EXPORT and @EXPORT_OK.
 In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
@@ -619,7 +637,7 @@ or
  };
 
 
-=head2 SELECT FUNCTIONS EXCEPT
+=head3 SELECT FUNCTIONS EXCEPT
 
 Inverse of -select option. Cannot use this option with -select.
 
@@ -631,7 +649,7 @@ Inverse of -select option. Cannot use this option with -select.
                ],
  };
 
-=head2 RENAME FUNCTIONS
+=head3 RENAME FUNCTIONS
 
 To rename function name, use this option with -select or -exception,
 this definition is prior to them.
@@ -651,17 +669,6 @@ In the following example, 'min' is not in -select list, but can be exported.
                  ]
                 ],
   };
-
-=head2 EXPORTING LIKE Sub::Exporter
-
-This featrue is not enough tested. and only support '-prefix' and '-as'.
-
- use UtilSubExporter -list => {-prefix => 'list__', min => {-as => "list___min"}},
-                     # The following is normal Sub::Exporter importing
-                     greet => {-prefix => "greet_"},
-                     'askme' => {-as => "ask_me"};
-
-Check t/lib/UtilSubExporter.pm, t/10-sub-exporter-like-epxort.t and  t/12-sub-exporter-like-export.t
 
 =head3 Sub::Exporter's generator way
 
@@ -846,7 +853,7 @@ The following modules can work with Util::Any.
 
 L<Exporter>, L<Exporter::Simple>, L<Sub::Exporter> and L<Perl6::Export::Attrs>.
 
-Now I try to make L<Util::All> module based on Util::Any. see the following URL.
+The following is new module L<Util::All>, based on Util::Any.
 
  http://github.com/ktat/Util-All
 
