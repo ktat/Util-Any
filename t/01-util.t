@@ -53,11 +53,21 @@ is($main::ISA[-1], 'Util::Any', 'isa');
 ok(!defined &main::_use_import_module, 'not defined');
 @main::ISA = @isa;
 
-foreach my $m (['-Exporter'        , 'Exporter'            ],
+MODULE:
+foreach my $m (['-Exporter'        , 'Exporteaar'            ],
                ['-ExporterSimple'  , 'Exporter::Simple'    ],
                ['-SubExporter'     , 'Sub::Exporter'       ],
                ['-Perl6ExportAttrs', 'Perl6::Export::Attrs'],
               ) {
+  {
+    package tmp_package;
+    eval "require $m->[1]";
+    if($@ =~m{can't locate}i) {
+      warn("$m->[1] is not installed\n");
+      next MODULE;
+    }
+  }
+
   Util::Any::_base_import('Util::Any', 'main', $m->[0]);
   my $file = $m->[1] . '.pm';
   $file =~s{::}{/}g;

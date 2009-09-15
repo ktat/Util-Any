@@ -1,5 +1,8 @@
 Revision history for Util-Any
 
+0.11    2009/09/15 09:47
+	fix text script. if module is not installed, skip test.
+
 0.10    2009/09/14 11:47
 	add option smart_rename.
 
