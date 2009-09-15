@@ -8,6 +8,7 @@ t/00-load.t
 t/boilerplate.t
 t/pod-coverage.t
 t/pod.t
+t/01-synopsis.t
 t/01-unit.t
 t/01-util.t
 t/01-util-kind-list.t
@@ -48,6 +49,8 @@ t/09-exporter-no-args.t
 t/10-sub-exporter.t
 t/10-sub-exporter2.t
 t/10-sub-exporter-no-args.t
+t/10-sub-exporter-like-export.t
+t/10-sub-exporter-generator.t
 t/11-sub-exporter-all.t
 t/11-sub-exporter-full-all.t
 t/12-sub-exporter-like-export.t
@@ -66,3 +69,4 @@ t/lib/Inherit.pm
 t/lib/InheritSub.pm
 t/lib/One.pm
 t/lib/Two.pm
+t/lib/SubExporterGenerator.pm

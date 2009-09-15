@@ -1,7 +1,23 @@
 Revision history for Util-Any
 
+0.12    2009/09/15 16:29
+  	fix bug importing with specific functions
+ 	    for example, -list => ['uniq'];
+	    it occurs when one kind has multiple modules.
+	    This bug is from 0.08
+	fix bug, export like SubExpoter (rename using -as) didn't work.
+	fix bug, the following importing didn't work.
+	    use Util::Any {-list => ['uniq']};
+	    This was bug of documennt, but now work.
+	fix document
+            -kind => 'function' doesn't work. use -kind => ['function'], instead.
+            for example, -list => ['uniq']
+	add test for synopsis example
+ 	add test of Sub::Exporter generators way and write docuement about it.
+	fix typo in test script
+
 0.11    2009/09/15 09:47
-	fix text script. if module is not installed, skip test.
+	fix test script. if module is not installed, skip test.
 
 0.10    2009/09/14 11:47
 	add option smart_rename.

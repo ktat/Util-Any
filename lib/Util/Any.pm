@@ -28,6 +28,7 @@ sub import {
     @opt{qw/prefix module_prefix debug smart_rename/} = (delete @{$_[-1]}{qw/prefix module_prefix debug smart_rename/});
     pop @_ unless %{$_[-1]};
   }
+  @_ = %{$_[0]} if @_ == 1 and ref $_[0] eq 'HASH';
 
   my $config = Clone::clone(do { no strict 'refs'; ${$pkg . '::Utils'} });
   my ($arg, $want) = $pkg->_arrange_args(\@_, $config, $caller);
@@ -37,7 +38,10 @@ sub import {
     my ($funcs, $local_definition, $kind_prefix) = $pkg->_func_definitions($kind, $want->{$kind});
 
     foreach my $class (@{$config->{$kind}}) { # $class is class name or array ref
-      my @funcs = @{$funcs->{$kind} || []};
+      # use Tie::Trace 'watch';
+      # watch my @funcs;
+      my @funcs;
+      @funcs = @{$funcs->{$kind} || []};
       ($class, $module_prefix, $options) = @$class if ref $class;
       my $k = lc(join "", $kind =~m{(\w+)}g);
       $prefix = $kind_prefix                             ? $kind_prefix   :
@@ -61,6 +65,7 @@ sub import {
           @funcs =  @{_all_funcs_in_class($class)};
         }
         foreach my $o (grep !/^-/, keys %$options) {
+          use Data::Dumper;
           if (ref $options->{$o} eq 'CODE') {
             my $gen = $options->{$o};
             foreach my $def (@{$local_definition->{$o}}) {
@@ -77,7 +82,7 @@ sub import {
       } elsif(ref $options eq 'ARRAY') {
         push @funcs, @$options;
       }
-      $pkg->_do_export($caller, $class, \@funcs, $local_definition, \%rename, $prefix);
+      $pkg->_do_export($caller, $class, \@funcs, $local_definition, \%rename, $prefix, $kind_prefix);
     }
   }
 }
@@ -107,24 +112,39 @@ sub _all_funcs_in_class {
 }
 
 sub _do_export {
-  my ($pkg, $caller, $class, $funcs, $local_definition, $rename, $prefix) = @_;
-  my @export_funcs = @$funcs ? @$funcs : @{_all_funcs_in_class($class)};
+  my ($pkg, $caller, $class, $funcs, $local_definition, $rename, $prefix, $kind_prefix) = @_;
+  my %def_funcs;
   if (%$local_definition) {
     foreach my $func (keys %$local_definition) {
       foreach my $def (@{$local_definition->{$func}}) {
-        my $local_rename = delete $def->{-as} || '';
-        unless (%$def) {
-          ExportTo::export_to
-              ($caller =>
-               {
-                ($local_rename ? $local_rename : $prefix ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) : $func)
-                              => $class . '::' . $func
-               });
+        if (ref $def eq 'HASH') {
+          my $local_rename = delete $def->{-as} || '';
+          no strict 'refs';
+          if (!%$def and defined &{$class . '::' . $func}) {
+            use strict;
+            ExportTo::export_to
+                ($caller =>
+                 {
+                  ($local_rename ? $local_rename :
+                   $prefix       ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) :
+                   $func)
+                  => $class . '::' . $func
+                 });
+          } else {
+            $def->{-as} = $local_rename;
+          }
+        } else {
+          Carp::croak("setting for fucntions must be hash ref.");
         }
+        $def_funcs{$func} = 1;
       }
     }
-    @export_funcs = grep !exists $local_definition->{$_}, @export_funcs;
+  } elsif (@$funcs) {
+    no strict 'refs';
+    @$funcs = grep defined &{$class . '::'. $_}, @$funcs;
+    return unless @$funcs;
   }
+  my @export_funcs = grep !exists $def_funcs{$_}, ($kind_prefix or !@$funcs) ? @{_all_funcs_in_class($class)} : @$funcs;
   ExportTo::export_to($caller => ($prefix or %$rename)
                       ? {map {(ref $prefix ne 'CODE' ? $prefix . ($rename->{$_} || $_) : $prefix->($_)) => $class . '::' . $_} @export_funcs}
                       : [map $class . '::' . $_, uniq @export_funcs]);
@@ -277,7 +297,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 =head1 SYNOPSIS
 
@@ -288,8 +308,8 @@ our $VERSION = '0.11';
 
 If you want to choose functions
 
-    use Util::Any {-list => qw/uniq/};
-    # you can import uniq function, not import other functions
+    use Util::Any -list => ['uniq'];
+    # you can import uniq function only, not import other functions
     
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
@@ -310,9 +330,28 @@ If you want to import functions with prefix(ex. list_, scalar_, hash_)
 
     use Util::Any -all, {prefix => 1};
     use Util::Any -list, {prefix => 1};
-    use Util::Any {-list => ['uniq']}, {prefix => 1};
+    use Util::Any -list => ['uniq', 'min'], {prefix => 1};
     
     print list_uniq qw/1, 0, 1, 2, 3, 3/;
+   
+
+If you want to import functions with your own prefix.
+
+   use Util::Any -list => {-prefix => "l_"};
+   print l_uniq qw/1, 0, 1, 2, 3, 3/;
+
+If you want to import functions as different name.
+
+   use Util::Any -list => {uniq => {-as => 'listuniq'}};
+   print listuniq qw/1, 0, 1, 2, 3, 3/;
+
+When you use both renaming and your own prefix ?
+
+   use Util::Any -list => {uniq => {-as => 'listuniq'}, -prefix => "l_"};
+   print listuniq qw/1, 0, 1, 2, 3, 3/;
+   print l_min qw/1, 0, 1, 2, 3, 3/;
+   # the following is NG
+   print l_uniq qw/1, 0, 1, 2, 3, 3/;
 
 =head1 DESCRIPTION
 
@@ -342,12 +381,16 @@ see C<CREATE YOUR OWN Util::Any>, in detail.
 
 Give list of kinds of modules. All functions in moduls are exporeted.
 
-=head2  use Util::Any {KIND => [FUNCTIONS], ...};
+=head2  use Util::Any KIND => [FUNCTIONS], ...;
+
+ use Util::Any -list => ['uniq'], -hash => ['lock_keys'];
+
+Give hash whose key is kind and value is function names as array ref.
+Selected functions are exported.
+
+you can write it as hash ref.
 
  use Util::Any {-list => ['uniq'], -hash => ['lock_keys']};
-
-Give hash ref whose key is kind and value is function names.
-Selected functions are exported.
 
 =head2  use Util::Any ..., {OPTION => VALUE};
 
@@ -670,9 +713,45 @@ In the following example, 'min' is not in -select list, but can be exported.
                 ],
   };
 
-=head3 Sub::Exporter's generator way
+=head3 USE Sub::Exporter's GENERATOR WAY
 
-It's experimental feature, not enough tested.
+It's somewhat complecate, I just show you code.
+
+Your utility class:
+
+  package SubExporterGenerator;
+  
+  use strict;
+  use Util::Any -Base;
+  
+  our $Utils =
+    {
+     -test => [[
+               'List::Util', '',
+               { min => \&build_min_reformatter,}
+              ]]
+    };
+  
+  sub build_min_reformatter {
+    my ($pkg, $class, $name, @option) = @_;
+    no strict 'refs';
+    my $code = do { no strict 'refs'; \&{$class . '::' . $name}};
+    sub {
+      my @args = @_;
+      $code->(@args, $option[0]->{under});
+    }
+  }
+
+Your script using your utility class:
+
+ package main;
+ 
+ use strict;
+ use lib qw(lib t/lib);
+ use SubExporterGenerator -test => {min => {-as => "min_under_20", under => 20}};
+ 
+ print min_under_20(100,25,30); # 20
+ print min_under_20(100,10,30); # 10
 
 =head1 WORKING WITH EXPORTER-LIKE MODULES
 

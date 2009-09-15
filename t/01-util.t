@@ -54,7 +54,7 @@ ok(!defined &main::_use_import_module, 'not defined');
 @main::ISA = @isa;
 
 MODULE:
-foreach my $m (['-Exporter'        , 'Exporteaar'            ],
+foreach my $m (['-Exporter'        , 'Exporter'            ],
                ['-ExporterSimple'  , 'Exporter::Simple'    ],
                ['-SubExporter'     , 'Sub::Exporter'       ],
                ['-Perl6ExportAttrs', 'Perl6::Export::Attrs'],
