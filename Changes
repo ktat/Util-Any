@@ -1,5 +1,12 @@
 Revision history for Util-Any
 
+0.13    2009/09/24 13:53
+        improve code generator.
+            enable not to set -as.
+            export code generator when specifing only kind.
+        perfomance improvement
+        fix typo in document
+
 0.12    2009/09/15 16:29
   	fix bug importing with specific functions
  	    for example, -list => ['uniq'];

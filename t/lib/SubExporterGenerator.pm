@@ -5,12 +5,20 @@ use Util::Any -Base;
 
 our $Utils =
   {
-   -test => [[
+   -test => [
+             [
+              'List::MoreUtils', '',
+              ['uniq'],
+             ],
+             [
              'List::Util', '',
-             { min => \&build_min_reformatter,
-               max => \&build_max_reformatter,
+             {
+              -select => ['shuffle'],
+              min => \&build_min_reformatter,
+              max => \&build_max_reformatter,
              }
-            ]]
+            ],
+            ]
   };
 
 sub build_min_reformatter {
@@ -19,7 +27,7 @@ sub build_min_reformatter {
   my $code = do { no strict 'refs'; \&{$class . '::' . $name}};
   sub {
     my @args = @_;
-    $code->(@args, $option[0]->{under});
+    $code->(@args, ($option[0]->{under} || ()));
   }
 }
 
@@ -28,7 +36,7 @@ sub build_max_reformatter {
   my $code = do { no strict 'refs'; \&{$class . '::' . $name}};
   sub {
     my @args = @_;
-    $code->(@args, $option[0]->{upper});
+    $code->(@args, ($option[0]->{upper} || ()));
   }
 }
 

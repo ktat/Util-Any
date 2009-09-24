@@ -4,7 +4,7 @@ use ExportTo ();
 use Clone ();
 use Carp ();
 use warnings;
-use List::MoreUtils qw/uniq any/;
+use List::MoreUtils ();
 use strict;
 
 our $Utils = {
@@ -14,6 +14,7 @@ our $Utils = {
               debug  => [ ['Data::Dumper', '', ['Dumper']] ],
               string => [ qw/String::Util String::CamelCase/ ],
              };
+
 # I'll delete no dash group in the above, in future.
 $Utils->{'-' . $_} = $Utils->{$_} foreach keys %$Utils;
 
@@ -21,7 +22,7 @@ our $SubExporterImport = 'do_import';
 
 sub import {
   my ($pkg, $caller) = (shift, (caller)[0]);
-  return $pkg->_base_import($caller, @_) if @_ and $_[0] =~/^-[A-Z]\w+$/;
+  return $pkg->_base_import($caller, @_) if @_ and $_[0] =~/^-[A-Z]\w+$/o;
 
   my %opt = (prefix => 0, module_prefix => 0, debug => 0, smart_rename => 0);
   if (@_ > 1 and ref $_[-1] eq 'HASH') {
@@ -40,40 +41,49 @@ sub import {
     foreach my $class (@{$config->{$kind}}) { # $class is class name or array ref
       # use Tie::Trace 'watch';
       # watch my @funcs;
-      my @funcs;
-      @funcs = @{$funcs->{$kind} || []};
+      my %want_funcs;
+      @want_funcs{@{$funcs->{$kind} || []}} = ();
       ($class, $module_prefix, $options) = @$class if ref $class;
-      my $k = lc(join "", $kind =~m{(\w+)}g);
+      my $k = lc(join "", $kind =~m{(\w+)}go);
       $prefix = $kind_prefix                             ? $kind_prefix   :
                 ($opt{module_prefix} and $module_prefix) ? $module_prefix :
                  $opt{prefix}                            ? lc($k) . '_'   :
                  $opt{smart_rename}                      ? $pkg->_create_smart_rename($k) : '';
 
       my $evalerror = '';
-      if ($evalerror = do { local $@; eval "require $class"; $evalerror = $@ }) {
+      if ($evalerror = do { local $@; eval {my $path = $class; $path =~s{::}{/}go; require $path. ".pm"; $evalerror = $@ }; $@}) {
+      # if ($evalerror = do { local $@; eval "require $class";  $evalerror = $@ }) {
         $opt{debug} == 2 ? Carp::croak $evalerror : Carp::carp $evalerror;
       }
-      my %rename;
+      my @funcs;
+      my (%rename, %exported);
       if (ref $options eq 'HASH') {
-        push @funcs, @{$options->{-select}} if exists $options->{-select};
+        @funcs = @{$options->{-select}} if exists $options->{-select};
         if (exists $options->{-except}) {
           Carp::croak "cannot use -select & -except in same time." if exists $options->{select};
           my %except;
           @except{@{$options->{-except}}} = ();
-          push @funcs, grep !exists $except{$_}, @{_all_funcs_in_class($class)};
-        } elsif (! @funcs) {
-          @funcs =  @{_all_funcs_in_class($class)};
+          @funcs = grep !exists $except{$_}, @{_all_funcs_in_class($class)};
+        } elsif (not @funcs) {
+          @funcs = @{_all_funcs_in_class($class)};
         }
-        foreach my $o (grep !/^-/, keys %$options) {
-          use Data::Dumper;
+        my %tmp;
+        @tmp{%want_funcs ? keys %want_funcs : grep(!/^-/, keys %$options)} = ();
+        foreach my $o (keys %tmp) {
+          next if not defined $options->{$o};
           if (ref $options->{$o} eq 'CODE') {
             my $gen = $options->{$o};
-            foreach my $def (@{$local_definition->{$o}}) {
-              my %arg;
-              $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
-              ExportTo::export_to($caller => {delete $def->{-as} => $gen->($pkg, $class, $o, \%arg)});
+            if (%$local_definition) {
+              foreach my $def (@{$local_definition->{$o}}) {
+                my %arg;
+                $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
+                ExportTo::export_to($caller => {(delete $def->{-as} || $o) => $gen->($pkg, $class, $o, \%arg)});
+              }
+            } else {
+              ExportTo::export_to($caller => {$o => $gen->($pkg, $class, $o, {})});
             }
-
+            $exported{$o} = undef;
+            delete $want_funcs{$o};
           } elsif (defined &{$class . '::' . $o}) {
             push @funcs , $o;
             $rename{$o} = $options->{$o};
@@ -81,8 +91,11 @@ sub import {
         }
       } elsif(ref $options eq 'ARRAY') {
         push @funcs, @$options;
+      } else {
+        @funcs = @{_all_funcs_in_class($class)};
       }
-      $pkg->_do_export($caller, $class, \@funcs, $local_definition, \%rename, $prefix, $kind_prefix);
+      @funcs = grep !exists $exported{$_}, @funcs;
+      $pkg->_do_export($caller, $class, \@funcs, \%want_funcs, $local_definition, \%rename, $prefix, $kind_prefix);
     }
   }
 }
@@ -103,25 +116,36 @@ sub _create_smart_rename {
   };
 }
 
-sub _all_funcs_in_class {
-  my ($class) = @_;
-  my %f;
-  no strict 'refs';
-  @f{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
-  return [grep defined &{$class . '::' . $_}, keys %f];
+{
+  my %tmp;
+  sub _all_funcs_in_class {
+    my ($class) = @_;
+    return $tmp{$class} if exists $tmp{$class};
+    my %f;
+    {
+      no strict 'refs';
+      @f{@{$class . '::EXPORT_OK'}, @{$class . '::EXPORT'}} = ();
+    }
+    return $tmp{$class} = [grep defined &{$class . '::' . $_}, keys %f];
+  }
 }
 
 sub _do_export {
-  my ($pkg, $caller, $class, $funcs, $local_definition, $rename, $prefix, $kind_prefix) = @_;
+  my ($pkg, $caller, $class, $funcs, $want_funcs, $local_definition, $rename, $prefix, $kind_prefix) = @_;
   my %def_funcs;
   if (%$local_definition) {
     foreach my $func (keys %$local_definition) {
+      next if %$want_funcs and not exists $want_funcs->{$func};
       foreach my $def (@{$local_definition->{$func}}) {
         if (ref $def eq 'HASH') {
           my $local_rename = delete $def->{-as} || '';
-          no strict 'refs';
-          if (!%$def and defined &{$class . '::' . $func}) {
-            use strict;
+          my $defined = 0;
+          {
+            no strict 'refs';
+            $defined = defined &{$class . '::' . $func};
+            # $defined = $class->can($func);
+          }
+          if (!%$def and $defined) {
             ExportTo::export_to
                 ($caller =>
                  {
@@ -142,12 +166,15 @@ sub _do_export {
   } elsif (@$funcs) {
     no strict 'refs';
     @$funcs = grep defined &{$class . '::'. $_}, @$funcs;
+    # @$funcs = grep defined $class->UNIVERSAL::can($_), @$funcs;
     return unless @$funcs;
   }
+
   my @export_funcs = grep !exists $def_funcs{$_}, ($kind_prefix or !@$funcs) ? @{_all_funcs_in_class($class)} : @$funcs;
+  @export_funcs = grep exists $want_funcs->{$_}, @export_funcs if %$want_funcs;
   ExportTo::export_to($caller => ($prefix or %$rename)
                       ? {map {(ref $prefix ne 'CODE' ? $prefix . ($rename->{$_} || $_) : $prefix->($_)) => $class . '::' . $_} @export_funcs}
-                      : [map $class . '::' . $_, uniq @export_funcs]);
+                      : [map $class . '::' . $_, List::MoreUtils::uniq @export_funcs]);
 }
 
 sub _insert_want_arg {
@@ -184,7 +211,7 @@ sub _arrange_args {
           push @arg, ':ALL';
         }
       }
-    } elsif (any {ref $_} @$org_args) {
+    } elsif (List::MoreUtils::any {ref $_} @$org_args) {
       for (my $i = 0; $i < @$org_args; $i++) {
         my $f = $org_args->[$i];
         my $setting = $org_args->[$i + 1] ? $org_args->[++$i] : undef;
@@ -209,7 +236,6 @@ sub _func_definitions {
     $kind_prefix = $want_func_definition->{-prefix}
       if exists $want_func_definition->{-prefix};
     foreach my $f (grep !/^-/, keys %$want_func_definition) {
-      push @{$funcs{$kind} ||= []}, $f;
       $local_definition{$f} = [$want_func_definition->{$f}];
     }
   } elsif (ref $want_func_definition eq 'ARRAY') {
@@ -227,7 +253,7 @@ sub _func_definitions {
         push @{$funcs{$kind} ||= []}, $k;
       }
     }
-    @{$funcs{$kind} ||= []} = uniq @{$funcs{$kind} ||= []};
+    @{$funcs{$kind} ||= []} = List::MoreUtils::uniq @{$funcs{$kind} ||= []};
   }
   return \%funcs, \%local_definition, $kind_prefix || '';
 }
@@ -267,17 +293,17 @@ sub _base_import {
   while (my $flg = lc shift @flgs) {
     no strict 'refs';
     if ($flg eq '-perl6exportattrs') {
-      eval "use Perl6::Export::Attrs ();";
+      require Perl6::Export::Attrs;
       *{$caller . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
       *{$caller . '::_use_import_module'} = sub { 'Perl6::Export::Attrs' };
     } elsif ($flg eq '-subexporter') {
-      eval "use Sub::Exporter ();";
+      require Sub::Exporter;
       *{$caller . '::_use_import_module'} = sub { 'Sub::Exporter' };
     } elsif ($flg eq '-exportersimple') {
-      eval "use Exporter::Simple ();";
+      require Exporter::Simple;
       *{$caller . '::_use_import_module'} = sub { 'Exporter::Simple' };
     } elsif ($flg eq '-exporter') {
-      use Exporter ();
+      require Exporter;
       push @{"${caller}::ISA"}, 'Exporter';
       *{$caller . '::_use_import_module'} = sub { 'Exporter' };
     } elsif ($flg eq '-base') {
@@ -297,7 +323,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 =head1 SYNOPSIS
 
@@ -379,7 +405,7 @@ see C<CREATE YOUR OWN Util::Any>, in detail.
 
  use Util::Any -list, -hash;
 
-Give list of kinds of modules. All functions in moduls are exporeted.
+Give list of kinds of modules. All functions in modules are exporeted.
 
 =head2  use Util::Any KIND => [FUNCTIONS], ...;
 
@@ -538,7 +564,7 @@ from Data::Dumper (2.121)
 
 =head1 EXPORTING LIKE Sub::Exporter
 
-This featrue is not enough tested. and only support '-prefix' and '-as'.
+This feature is not enough tested. and only support '-prefix' and '-as'.
 
  use UtilSubExporter -list => {-prefix => 'list__', min => {-as => "list___min"}},
                      # The following is normal Sub::Exporter importing
@@ -555,6 +581,7 @@ Just inherit Util::Any and define $Utils hash ref as the following.
  
  use Clone qw/clone/;
  use Util::Any -Base; # or use base qw/Util::Any/;
+ # If you don't want to inherit Util::Any setting, no need to clone.
  our $Utils = clone $Util::Any::Utils;
  push @{$Utils->{-list}}, qw/Your::Favorite::List::Utils/;
  
@@ -618,7 +645,7 @@ In your code;
 
 =head2 SMART RENAME FOR EACH KIND
 
-smart_rename option renmae function name by a little smart way.
+smart_rename option rename function name by a little smart way.
 For example,
 
  our $Utils = {
@@ -645,9 +672,9 @@ That's too bad. If you use C<smart_rename => 1> instead:
 
 rename rule is represented in _create_smart_rename in Util::Any.
 
-=head2 CHANGE smart_rename BEHAVIOER
+=head2 CHANGE smart_rename BEHAVIOUR
 
-To define _create_smart_rename, you can change smart_rename behavior.
+To define _create_smart_rename, you can change smart_rename behaviour.
 _create_smart_rename get 2 argument, package name and kind of utilitiy,
 and should return code reference which get function name and return new name.
 As an example, see Util::Any's _create_smart_rename.
@@ -656,9 +683,9 @@ As an example, see Util::Any's _create_smart_rename.
 
 =head3 SELECT FUNCTIONS
 
-Util::Any auomaticaly export functions from modules' @EXPORT and @EXPORT_OK.
+Util::Any automatically export functions from modules' @EXPORT and @EXPORT_OK.
 In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
-Thease 2 functions are same feature.
+Tease 2 functions are same feature.
 
 So you can limit functions to be exported.
 
@@ -715,7 +742,7 @@ In the following example, 'min' is not in -select list, but can be exported.
 
 =head3 USE Sub::Exporter's GENERATOR WAY
 
-It's somewhat complecate, I just show you code.
+It's somewhat complicate, I just show you code.
 
 Your utility class:
 
@@ -738,7 +765,7 @@ Your utility class:
     my $code = do { no strict 'refs'; \&{$class . '::' . $name}};
     sub {
       my @args = @_;
-      $code->(@args, $option[0]->{under});
+      $code->(@args, $option[0]->{under} || ());
     }
   }
 
@@ -748,10 +775,25 @@ Your script using your utility class:
  
  use strict;
  use lib qw(lib t/lib);
- use SubExporterGenerator -test => {min => {-as => "min_under_20", under => 20}};
+ use SubExporterGenerator -test => [
+       min => {-as => "min_under_20", under => 20},
+       min => {-as => "min_under_5" , under => 5},
+     ];
  
  print min_under_20(100,25,30); # 20
  print min_under_20(100,10,30); # 10
+ print min_under_20(100,25,30); # 5
+ print min_under_20(100,1,30);  # 1
+
+If you don't specify C<-as>, C<min> is exported with arguments.
+But, of course, the following doesn't work.
+
+ use SubExporterGenerator -test => [
+       min => {under => 20},
+       min => {under => 5},
+     ];
+
+Util::Any export duplicate function C<min>.
 
 =head1 WORKING WITH EXPORTER-LIKE MODULES
 
@@ -764,14 +806,14 @@ If you want to use module mentioned above, you have to change the way to inherit
 =head2 DIFFERENCE between 'all' and '-all' or ':all'
 
 If your utility module which inherited Util::Any has utility functions and export them by Exporter-like module,
-behavior of 'all' and '-all' or ':all' is a bit different.
+behaviour of 'all' and '-all' or ':all' is a bit different.
 
  'all' ... export all utilities defined in your package's $Utils variables.
  '-all' or ':all' ... export all utilities including functions in your util module itself.
 
 =head2 ALTERNATIVE INHERITING
 
-Normaly, you use;
+Normally, you use;
 
  package YourUtils;
  
@@ -815,7 +857,7 @@ If you want to change this name, do the following.
 
 Perl6::Export::Attributes is not recommended in the following URL
 (http://www.perlfoundation.org/perl5/index.cgi?pbp_module_recommendation_commentary).
-So, you'd beter use other exporter module. It is left as an example.
+So, you'd better use other exporter module. It is left as an example.
 
  package Util::Yours;
  
@@ -838,7 +880,7 @@ So, you'd beter use other exporter module. It is left as an example.
 
 Perl6::Export::Attributes is not recommended in the following URL
 (http://www.perlfoundation.org/perl5/index.cgi?pbp_module_recommendation_commentary).
-So, you'd beter use other exporter module. It is left as an example.
+So, you'd better use other exporter module. It is left as an example.
 
 You can write your own import method and BEGIN block like the following.
 Instead of using "use Util::Any -Perl6ExportAttrs".

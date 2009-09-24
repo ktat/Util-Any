@@ -51,6 +51,7 @@ t/10-sub-exporter2.t
 t/10-sub-exporter-no-args.t
 t/10-sub-exporter-like-export.t
 t/10-sub-exporter-generator.t
+t/10-sub-exporter-generator2.t
 t/11-sub-exporter-all.t
 t/11-sub-exporter-full-all.t
 t/12-sub-exporter-like-export.t
