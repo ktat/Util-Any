@@ -3,8 +3,9 @@ package Util::Any;
 use ExportTo ();
 use Clone ();
 use Carp ();
-use warnings;
 use List::MoreUtils ();
+use Module::Pluggable ();
+use warnings;
 use strict;
 
 our $Utils = {
@@ -32,6 +33,14 @@ sub import {
   @_ = %{$_[0]} if @_ == 1 and ref $_[0] eq 'HASH';
 
   my $config = Clone::clone(do { no strict 'refs'; ${$pkg . '::Utils'} });
+  if ($pkg->can('_plugins')) {
+    foreach my $plugin (@{$pkg->_plugins}) {
+      my $util = $plugin->utils;
+      foreach my $kind (keys %$util) {
+        push @{$config->{$kind} ||= []}, @{$util->{$kind}};
+      }
+    }
+  }
   my ($arg, $want) = $pkg->_arrange_args(\@_, $config, $caller);
   foreach my $kind (keys %$want) {
     my ($prefix, $module_prefix, $options) = ('', '', []);
@@ -58,9 +67,18 @@ sub import {
       my @funcs;
       my (%rename, %exported);
       if (ref $options eq 'HASH') {
-        @funcs = @{$options->{-select}} if exists $options->{-select};
-        if (exists $options->{-except}) {
-          Carp::croak "cannot use -select & -except in same time." if exists $options->{select};
+        # Like the following setting.
+        #
+        # {
+        #  'first' => 'list_first', # first as list_first
+        #  'min'   => \&build_min_reformatter,
+        #  -select => ['first', 'sum', 'shuffle'],
+        # }
+
+        if (exists $options->{-select}) {
+          Carp::croak "cannot use -except & -select in same time." if exists $options->{-except};
+          @funcs = @{$options->{-select}}
+        } elsif (exists $options->{-except}) {
           my %except;
           @except{@{$options->{-except}}} = ();
           @funcs = grep !exists $except{$_}, @{_all_funcs_in_class($class)};
@@ -69,24 +87,24 @@ sub import {
         }
         my %tmp;
         @tmp{%want_funcs ? keys %want_funcs : grep(!/^-/, keys %$options)} = ();
-        foreach my $o (keys %tmp) {
-          next if not defined $options->{$o};
-          if (ref $options->{$o} eq 'CODE') {
-            my $gen = $options->{$o};
+        foreach my $function (keys %tmp) {
+          next if not defined $options->{$function};
+          if (ref $options->{$function} eq 'CODE') {
+            my $gen = $options->{$function};
             if (%$local_definition) {
-              foreach my $def (@{$local_definition->{$o}}) {
+              foreach my $def (@{$local_definition->{$function}}) {
                 my %arg;
                 $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
-                ExportTo::export_to($caller => {(delete $def->{-as} || $o) => $gen->($pkg, $class, $o, \%arg)});
+                ExportTo::export_to($caller => {(delete $def->{-as} || $function) => $gen->($pkg, $class, $function, \%arg)});
               }
             } else {
-              ExportTo::export_to($caller => {$o => $gen->($pkg, $class, $o, {})});
+              ExportTo::export_to($caller => {$function => $gen->($pkg, $class, $function, {})});
             }
-            $exported{$o} = undef;
-            delete $want_funcs{$o};
-          } elsif (defined &{$class . '::' . $o}) {
-            push @funcs , $o;
-            $rename{$o} = $options->{$o};
+            $exported{$function} = undef;
+            delete $want_funcs{$function};
+          } elsif (defined &{$class . '::' . $function}) {
+            push @funcs , $function;
+            $rename{$function} = $options->{$function};
           }
         }
       } elsif(ref $options eq 'ARRAY') {
@@ -188,7 +206,7 @@ sub _insert_want_arg {
 sub _arrange_args {
   my ($pkg, $org_args, $config, $caller) = @_;
   my (@arg, %want);
-  my $import_module = $pkg->_use_import_module || '';
+  my $import_module = $pkg->_use_import_module;
   if (@$org_args) {
     @$org_args = %{$org_args->[0]} if ref $org_args->[0] eq 'HASH';
 
@@ -224,7 +242,11 @@ sub _arrange_args {
       }
     }
   }
-  $pkg->_do_base_import($import_module, $caller, \@arg) if (@arg or !@$org_args) and $import_module;
+  if ($import_module) {
+    $pkg->_do_base_import($import_module, $caller, \@arg) if @arg or !@$org_args;
+  } else {
+    Carp::carp("unkown arguments: @arg") if @arg;
+  }
   return \@arg, \%want;
 }
 
@@ -308,6 +330,10 @@ sub _base_import {
       *{$caller . '::_use_import_module'} = sub { 'Exporter' };
     } elsif ($flg eq '-base') {
       # nothing to do
+    } elsif ($flg eq '-pluggable') {
+      # pluggable
+      Module::Pluggable->import(require => 1, search_path => [$caller . '::Plugin'], inner => 0);
+      *{$caller . '::_plugins'} = sub { [$pkg->plugins] };
     } else {
       push @unknown, $flg;
     }
@@ -323,7 +349,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 =head1 SYNOPSIS
 
@@ -580,7 +606,7 @@ Just inherit Util::Any and define $Utils hash ref as the following.
  package Util::Yours;
  
  use Clone qw/clone/;
- use Util::Any -Base; # or use base qw/Util::Any/;
+ use Util::Any -Base; # as same as use base qw/Util::Any/;
  # If you don't want to inherit Util::Any setting, no need to clone.
  our $Utils = clone $Util::Any::Utils;
  push @{$Utils->{-list}}, qw/Your::Favorite::List::Utils/;
@@ -721,8 +747,8 @@ Inverse of -select option. Cannot use this option with -select.
 
 =head3 RENAME FUNCTIONS
 
-To rename function name, use this option with -select or -exception,
-this definition is prior to them.
+To rename function name, write original function name as hash key and renamed name as hash value.
+this definition is prior to -select/-except.
 
 In the following example, 'min' is not in -select list, but can be exported.
 
@@ -785,7 +811,7 @@ Your script using your utility class:
  print min_under_20(100,25,30); # 5
  print min_under_20(100,1,30);  # 1
 
-If you don't specify C<-as>, C<min> is exported with arguments.
+If you don't specify C<-as>, exporeted function as C<min>.
 But, of course, the following doesn't work.
 
  use SubExporterGenerator -test => [
@@ -793,9 +819,52 @@ But, of course, the following doesn't work.
        min => {under => 5},
      ];
 
-Util::Any export duplicate function C<min>.
+Util::Any try to export duplicate function C<min>, one of both should fail.
+
+=head1 USE PLUGGABLE FEATURE FOR YOUR MODULE
+
+Just add a flag -Pluggbale.
+
+ package Util::Yours;
+ use Util::Any -Base, -Pluggable;
+
+And write plugin as the following:
+
+  package Util::Yours::Plugin::Net;
+  
+  sub utils {
+    # This structure is as same as $Utils.
+    return {
+        -net => [
+                  [
+                   'Net::Amazon', '',
+                   {
+                    amazon => sub {
+                      my ($pkg, $class, $func, $args) = @_;
+                      my $amazon = Net::Amazon->new(token => $args->{token});
+                      sub { $amazon }
+                    },
+                   }
+                  ]
+                ]
+       };
+  }
+  
+  1;
+
+And you can use it as the following.
+
+  use Util::Yours -net => [amazon => {token => "your_token"}];
+  
+  my $amazon = amazon; # get Net::Amazon object;
+
+Util::Any can merge definition in plugins. If same kind is in several plugins, it works.
+But same kind and same function name is defined, one of them doesn't work.
 
 =head1 WORKING WITH EXPORTER-LIKE MODULES
+
+NOTE THAT: I don't recommend this usage, because using this may confuse user;
+some of import options are for Util::Any and others are for exporter-like module.
 
 CPAN has some modules to export functions.
 Util::Any can work with some of such modules, L<Exporter>, L<Exporter::Simple>, L<Sub::Exporter> and L<Perl6::Export::Attrs>.

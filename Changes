@@ -1,5 +1,12 @@
 Revision history for Util-Any
 
+0.14    2009/09/26 11:02
+  	add pluggable feature.
+  	performance improvement.
+	    if empty -select option is passed,
+	    don't seek class's all functions.
+        warn when unkown arguments are passed.
+
 0.13    2009/09/24 13:53
         improve code generator.
             enable not to set -as.

@@ -1,7 +1,6 @@
 package UtilPerl6ExportAttrs;
 
 use strict;
-use base qw/Util::Any/;
 use Clone qw/clone/;
 
 BEGIN {
@@ -14,9 +13,9 @@ BEGIN {
   if ($err) {
     die $err;
   } else {
-    no strict 'refs';
-    *{__PACKAGE__ . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
+    eval {
     eval <<_CODE;
+      use Util::Any -Perl6ExportAttrs;
       sub foo :Export(:DEFAULT) {
         return "foo!";
       }
@@ -25,6 +24,7 @@ BEGIN {
         return "bar!";
       }
 _CODE
+    };
   }
 }
 

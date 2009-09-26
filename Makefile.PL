@@ -19,6 +19,7 @@ WriteMakefile(
 	'Data::Dumper'      => 0,
 	'String::Util'      => 0,
 	'String::CamelCase' => 0,
+	'Module::Pluggable' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean               => { FILES => 'Util-Any-*' },
