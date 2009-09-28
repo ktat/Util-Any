@@ -57,6 +57,8 @@ t/11-sub-exporter-full-all.t
 t/12-sub-exporter-like-export.t
 t/13-inherit.t
 t/14-pluggable.t
+t/14-pluggable_lazy.t
+t/14-pluggable_no.t
 t/lib/MyUtil.pm
 t/lib/SmartRename.pm
 t/lib/MyUtilBase.pm
@@ -73,5 +75,6 @@ t/lib/One.pm
 t/lib/Two.pm
 t/lib/SubExporterGenerator.pm
 t/lib/UtilPluggable.pm
-t/lib/UtilPluggable/Plugin/Test.pm
-t/lib/UtilPluggable/Plugin/Test2.pm
+t/lib/UtilPluggable/Plugin/Pluggable.pm
+t/lib/UtilPluggable/Plugin/Pluggable2.pm
+t/lib/UtilPluggable/Plugin/Pluggable/XXX.pm

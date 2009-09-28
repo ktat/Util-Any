@@ -4,7 +4,9 @@ use lib qw(./lib ./t/lib);
 
 my $err;
 BEGIN {
-  eval "use UtilSubExporter -l2s => {-prefix => 'list__', min => {-as => 'list___min'}},
+  eval "use UtilSubExporter -l2s => {-prefix => 'list__',
+                                     min => {-as => 'list___min'},
+                                    },
                             -greet => {-prefix => 'greet_'}, 'askme' => {-as => 'ask_me'};";
   $err = $@;
 }

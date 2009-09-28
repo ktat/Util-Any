@@ -1,4 +1,4 @@
-package UtilPluggable::Plugin::Test2;
+package UtilPluggable::Plugin::Pluggable2;
 
 sub utils {
   return

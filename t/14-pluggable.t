@@ -2,30 +2,38 @@ use Test::More qw/no_plan/;
 
 use lib qw(./lib t/lib);
 
+require UtilPluggable;
+
+package BBB;
+
+UtilPluggable->import(-pluggable2, {plugin => 'eager'});
+use Test::More;
+ok( defined &UtilPluggable::Plugin::Pluggable2::utils);
+ok( defined &UtilPluggable::Plugin::Pluggable::utils);
+ok(!defined &test);
+ok(!defined &test2);
+ok(!defined &camelize);
+ok(defined &test3);
+delete @INC{qw{UtilPluggable/Plugin/Pluggable.pm UtilPluggable/Plugin/Pluggable2.pm}};
+undef &UtilPluggable::Plugin::Pluggable::utils;
+undef &UtilPluggable::Plugin::Pluggable2::utils;
+
 package AAA;
 
-use UtilPluggable -pluggable;
+UtilPluggable->import(-pluggable, {plugin => 'eager'});
 use Test::More;
 
+ok(defined &UtilPluggable::Plugin::Pluggable2::utils);
+ok(defined &UtilPluggable::Plugin::Pluggable::utils);
 ok(defined &test);
 ok(defined &test2);
 ok(defined &camelize);
 ok(!defined &test3);
 
-package BBB;
-
-use UtilPluggable -pluggable2;
-use Test::More;
-
-ok(!defined &test);
-ok(!defined &test2);
-ok(!defined &camelize);
-ok(defined &test3);
-
 package CCC;
 
 use Test::More;
-use UtilPluggable -pluggable, -pluggable2;
+UtilPluggable->import(-pluggable, -pluggable2, {plugin => 'eager'});
 
 ok(defined &test);
 ok(defined &test2);
@@ -35,7 +43,7 @@ ok(defined &test3);
 package DDD;
 
 use Test::More;
-use UtilPluggable -all;
+UtilPluggable->import(-all, {plugin => 'eager'});
 
 ok(defined &test);
 ok(defined &test2);

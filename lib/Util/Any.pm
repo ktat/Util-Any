@@ -25,23 +25,30 @@ sub import {
   my ($pkg, $caller) = (shift, (caller)[0]);
   return $pkg->_base_import($caller, @_) if @_ and $_[0] =~/^-[A-Z]\w+$/o;
 
-  my %opt = (prefix => 0, module_prefix => 0, debug => 0, smart_rename => 0);
+  my %opt;
   if (@_ > 1 and ref $_[-1] eq 'HASH') {
-    @opt{qw/prefix module_prefix debug smart_rename/} = (delete @{$_[-1]}{qw/prefix module_prefix debug smart_rename/});
+    @opt{qw/prefix module_prefix debug smart_rename plugin/}
+      = (delete @{$_[-1]}{qw/prefix module_prefix debug smart_rename plugin/});
     pop @_ unless %{$_[-1]};
   }
+  $opt{$_} ||= 0        foreach qw/prefix module_prefix debug smart_rename/;
+  $opt{plugin} = 'lazy' if not defined $opt{plugin};
+
   @_ = %{$_[0]} if @_ == 1 and ref $_[0] eq 'HASH';
 
   my $config = Clone::clone(do { no strict 'refs'; ${$pkg . '::Utils'} });
   if ($pkg->can('_plugins')) {
-    foreach my $plugin (@{$pkg->_plugins}) {
-      my $util = $plugin->utils;
-      foreach my $kind (keys %$util) {
-        push @{$config->{$kind} ||= []}, @{$util->{$kind}};
+    if ($opt{plugin} eq 'eager') {
+      foreach my $plugin ($pkg->plugins) {
+        eval "require $plugin";
+        my $util = $plugin->utils;
+        foreach my $kind (keys %$util) {
+          push @{$config->{$kind} ||= []}, @{$util->{$kind}};
+        }
       }
     }
   }
-  my ($arg, $want) = $pkg->_arrange_args(\@_, $config, $caller);
+  my ($arg, $want) = $pkg->_arrange_args(\@_, $config, $caller, \%opt);
   foreach my $kind (keys %$want) {
     my ($prefix, $module_prefix, $options) = ('', '', []);
     Carp::croak "$pkg doesn't have such kind of functions : $kind" unless exists $config->{$kind};
@@ -95,7 +102,8 @@ sub import {
               foreach my $def (@{$local_definition->{$function}}) {
                 my %arg;
                 $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
-                ExportTo::export_to($caller => {(delete $def->{-as} || $function) => $gen->($pkg, $class, $function, \%arg)});
+                ExportTo::export_to($caller => {(delete $def->{-as} || $function)
+                                                => $gen->($pkg, $class, $function, \%arg)});
               }
             } else {
               ExportTo::export_to($caller => {$function => $gen->($pkg, $class, $function, {})});
@@ -157,10 +165,11 @@ sub _do_export {
       foreach my $def (@{$local_definition->{$func}}) {
         if (ref $def eq 'HASH') {
           my $local_rename = delete $def->{-as} || '';
+          my $original_func = {reverse %$rename}->{$func} || $func;
           my $defined = 0;
           {
             no strict 'refs';
-            $defined = defined &{$class . '::' . $func};
+            $defined = defined &{$class . '::' . $original_func};
             # $defined = $class->can($func);
           }
           if (!%$def and $defined) {
@@ -170,13 +179,14 @@ sub _do_export {
                   ($local_rename ? $local_rename :
                    $prefix       ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) :
                    $func)
-                  => $class . '::' . $func
+                  => $class . '::' . $original_func
                  });
           } else {
             $def->{-as} = $local_rename;
           }
         } else {
-          Carp::croak("setting for fucntions must be hash ref.");
+          Carp::croak("setting for fucntions must be hash ref for : $func => "
+                      . (ref $def eq 'ARRAY' ? "[". join(", ",@$def) ."]" : $def));
         }
         $def_funcs{$func} = 1;
       }
@@ -204,16 +214,17 @@ sub _insert_want_arg {
 }
 
 sub _arrange_args {
-  my ($pkg, $org_args, $config, $caller) = @_;
+  my ($pkg, $org_args, $config, $caller, $opt) = @_;
   my (@arg, %want);
   my $import_module = $pkg->_use_import_module;
   if (@$org_args) {
     @$org_args = %{$org_args->[0]} if ref $org_args->[0] eq 'HASH';
-
     if (lc($org_args->[0]) eq 'all') {
+      $pkg->_lazy_load_plugins_all($config) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
       # import all functions which Util::Any proxy
       @want{keys %$config} = ();
     } elsif (lc($org_args->[0]) =~ /^[:-]all$/) {
+      $pkg->_lazy_load_plugins_all($config) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
       # import ALL functions
       @want{keys %$config} = ();
       if ($import_module) {
@@ -230,24 +241,72 @@ sub _arrange_args {
         }
       }
     } elsif (List::MoreUtils::any {ref $_} @$org_args) {
+      $pkg->_lazy_load_plugins($config, $org_args) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
       for (my $i = 0; $i < @$org_args; $i++) {
-        my $f = $org_args->[$i];
+        my $kind = $org_args->[$i];
         my $setting = $org_args->[$i + 1] ? $org_args->[++$i] : undef;
-        _insert_want_arg($config, $f, $setting, \%want, \@arg);
+        _insert_want_arg($config, $kind, $setting, \%want, \@arg);
       }
     } else {
       # export specified kinds
-      foreach my $f (@$org_args) {
-        _insert_want_arg($config, $f, undef, \%want, \@arg);
+      $pkg->_lazy_load_plugins($config, $org_args) if  $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
+      foreach my $kind (@$org_args) {
+        _insert_want_arg($config, $kind, undef, \%want, \@arg);
       }
     }
   }
   if ($import_module) {
     $pkg->_do_base_import($import_module, $caller, \@arg) if @arg or !@$org_args;
   } else {
-    Carp::carp("unkown arguments: @arg") if @arg;
+    Carp::carp("unknown arguments: @arg") if @arg;
   }
   return \@arg, \%want;
+}
+
+sub _lazy_load_plugins_all {
+  my ($pkg, $config) = @_;
+  foreach my $plugin (@{$pkg->_plugins}) {
+    eval "require $plugin";
+    next if $@;
+    my $util = $plugin->utils;
+    foreach my $kind (keys %$util) {
+      push @{$config->{$kind} ||= []}, @{$util->{$kind}};
+    }
+  }
+}
+
+sub _lazy_load_plugins {
+  my ($pkg, $config, $org_args) = @_;
+  my @all;
+  my @kinds = map { ref $org_args->[$_] ? () :
+                      do {
+                        my $k = $org_args->[$_];
+                        $k =~ s{\W}{}g;
+                        $k =~ s{_}{::}g;
+                        $k =~ s{^(.+)(::all)$}{$1|${1}::\\w+} and push @all, $_;
+                        $k;
+                      }
+                    } (0 .. $#{$org_args});
+  return unless @kinds;
+  my $regex = "^${pkg}::Plugin::(?:". join("|", @kinds) . ')';
+  my $all_regex = '';
+  if (@all) {
+    $org_args->[$_] =~s{_all$}{} for @all;
+    $all_regex = "^${pkg}::Plugin::(?:".join("|", map {m{(\w+)}} @{$org_args}[@all]). ')';
+  }
+  foreach my $plugin (@{$pkg->_plugins}) {
+    if ($plugin =~m{$regex\W}i or $plugin =~m{$regex$}i) {
+      eval "require $plugin";
+      next if $@;
+      my $util = $plugin->utils;
+      foreach my $kind (keys %$util) {
+        push @{$config->{$kind} ||= []}, @{$util->{$kind}};
+        if ($all_regex and ($plugin =~ m{$all_regex\W}i or $plugin =~ m{$all_regex$}i)) {
+          push @$org_args, $kind;
+        }
+      }
+    }
+  }
 }
 
 sub _func_definitions {
@@ -311,29 +370,30 @@ sub _base_import {
     push @{"${caller}::ISA"}, __PACKAGE__;
   }
   my @unknown;
-
+  return unless @flgs;
   while (my $flg = lc shift @flgs) {
     no strict 'refs';
     if ($flg eq '-perl6exportattrs') {
-      require Perl6::Export::Attrs;
+      eval {require Perl6::Export::Attrs };
       *{$caller . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
       *{$caller . '::_use_import_module'} = sub { 'Perl6::Export::Attrs' };
     } elsif ($flg eq '-subexporter') {
-      require Sub::Exporter;
+      eval { require Sub::Exporter };
       *{$caller . '::_use_import_module'} = sub { 'Sub::Exporter' };
     } elsif ($flg eq '-exportersimple') {
-      require Exporter::Simple;
+      eval { require Exporter::Simple };
       *{$caller . '::_use_import_module'} = sub { 'Exporter::Simple' };
     } elsif ($flg eq '-exporter') {
-      require Exporter;
+     require Exporter;
       push @{"${caller}::ISA"}, 'Exporter';
       *{$caller . '::_use_import_module'} = sub { 'Exporter' };
     } elsif ($flg eq '-base') {
       # nothing to do
     } elsif ($flg eq '-pluggable') {
       # pluggable
-      Module::Pluggable->import(require => 1, search_path => [$caller . '::Plugin'], inner => 0);
-      *{$caller . '::_plugins'} = sub { [$pkg->plugins] };
+      Module::Pluggable->import(require => 0, search_path => [$caller . '::Plugin'], inner => 0);
+      my @plugins = $pkg->plugins;
+      *{$caller . '::_plugins'} = sub { \@plugins };
     } else {
       push @unknown, $flg;
     }
@@ -349,7 +409,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 =head1 SYNOPSIS
 
@@ -435,6 +495,8 @@ Give list of kinds of modules. All functions in modules are exporeted.
 
 =head2  use Util::Any KIND => [FUNCTIONS], ...;
 
+NOTE THAT kind '-all', 'all' or ':all' cannot take this option.
+
  use Util::Any -list => ['uniq'], -hash => ['lock_keys'];
 
 Give hash whose key is kind and value is function names as array ref.
@@ -466,6 +528,37 @@ Uti::Any itself doesn't have such a definition.
 =item smart_rename => 1
 
 see L<SMART RENAME FOR EACH KIND>.
+
+=item plugin => 'lazy' / 'eager' / 0 (default is 'lazy')
+
+If utility module based on Util::Any has plugin,
+Its plugins are loaded when related kind is specified(if kind name matches module name).
+If you want to load all plugin on using module, give 'eager' to this option.
+If you don't want to use plugin, set 0.
+
+ use Util::Yours -kind, .... {plugin => 'eager'}; # all plugins are loaded
+ use Util::Yours -kind, .... {plugin => 0};       # disable plugin feature.
+ use Util::Yours -kind;                           # is equal {plugin => 'lazy'}
+
+Relation of kind name and plugin name is the following.
+
+for example, If you have the following modules.
+
+ Util::Yours::Plugin::Date
+ Util::Yours::Plugin::DateTime
+ Util::Yours::Plugin::Net
+ Util::Yours::Plugin::Net::Amazon
+ Util::Yours::Plugin::Net::Twitter
+
+the following code:
+
+ use Util::Yours -date; # Plugin::Date is loaded
+ use Util::Yours -datetime; # Plugin::DateTime is loaded
+ use Util::Yours -net; # Plugin::Net is loaded
+ use Util::Yours -net_amazon; # Plugin::Net::Amazon is loaded
+ use Util::Yours -net_all; # Plugin::Net and Plugin::Net::* is loaded
+
+C<_all> is special keyword. see "NOTE ABOUT all KEYWORD".
 
 =item debug => 1/2
 
@@ -590,14 +683,31 @@ from Data::Dumper (2.121)
 
 =head1 EXPORTING LIKE Sub::Exporter
 
-This feature is not enough tested. and only support '-prefix' and '-as'.
+Like Sub::Exporter, Util::Any can export function name as you like.
 
- use UtilSubExporter -list => {-prefix => 'list__', min => {-as => "list___min"}},
-                     # The following is normal Sub::Exporter importing
-                     greet => {-prefix => "greet_"},
-                     'askme' => {-as => "ask_me"};
+ use Util::Yours -list => {-prefix => 'list__', miin => {-as => "lmin"}};
 
-Check t/lib/UtilSubExporter.pm, t/10-sub-exporter-like-epxort.t and  t/12-sub-exporter-like-export.t
+functions in -list, are exported with prefix "list__" except 'min' and 'min' is exported as 'lmin'.
+
+=head1 NOTE ABOUT all KEYWORD
+
+B<all> is special keyword, so it has some restriction.
+
+=head2 use module with 'all' cannot take any sequential arugments
+
+ use Util::Any -all; # or 'all', ':all'
+
+This cannot take sequential arguments. For example;
+
+ NG: use Util::Any -all => ['shuffle'];
+
+=head2 -plugin_module_all cannot take any sequential arguments
+
+ use Util::Yours -plugin_name_all;
+
+This cannot take sequential arguments. For example:
+
+ NG: use Util::Yours -plugin_name_all => ['some_function'];
 
 =head1 CREATE YOUR OWN Util::Any
 
@@ -711,7 +821,7 @@ As an example, see Util::Any's _create_smart_rename.
 
 Util::Any automatically export functions from modules' @EXPORT and @EXPORT_OK.
 In some cases, it is not good idea like Data::Dumper's Dumper and DumperX.
-Tease 2 functions are same feature.
+These 2 functions are same feature.
 
 So you can limit functions to be exported.
 
@@ -753,8 +863,7 @@ this definition is prior to -select/-except.
 In the following example, 'min' is not in -select list, but can be exported.
 
  our $Utils = {
-      -list  => [
-                 [
+      -list  => [[
                   'List::Util', '',
                   {
                    'first' => 'list_first', # first as list_first
@@ -762,8 +871,7 @@ In the following example, 'min' is not in -select list, but can be exported.
                    'min'   => 'lmin',       # min   as lmin
                    -select => ['first', 'sum', 'shuffle'],
                   }
-                 ]
-                ],
+               ]]
   };
 
 =head3 USE Sub::Exporter's GENERATOR WAY
@@ -821,7 +929,7 @@ But, of course, the following doesn't work.
 
 Util::Any try to export duplicate function C<min>, one of both should fail.
 
-=head1 USE PLUGGABLE FEATURE FOR YOUR MODULE
+=head2 USE PLUGGABLE FEATURE FOR YOUR MODULE
 
 Just add a flag -Pluggbale.
 
@@ -835,6 +943,7 @@ And write plugin as the following:
   sub utils {
     # This structure is as same as $Utils.
     return {
+        # kind name and plugin name should be same.
         -net => [
                   [
                    'Net::Amazon', '',
@@ -861,7 +970,7 @@ And you can use it as the following.
 Util::Any can merge definition in plugins. If same kind is in several plugins, it works.
 But same kind and same function name is defined, one of them doesn't work.
 
-=head1 WORKING WITH EXPORTER-LIKE MODULES
+=head2 WORKING WITH EXPORTER-LIKE MODULES
 
 NOTE THAT: I don't recommend this usage, because using this may confuse user;
 some of import options are for Util::Any and others are for exporter-like module.
@@ -872,7 +981,7 @@ If you want to use other modules, please inform me or implement import method by
 
 If you want to use module mentioned above, you have to change the way to inherit these modules.
 
-=head2 DIFFERENCE between 'all' and '-all' or ':all'
+=head3 DIFFERENCE between 'all' and '-all' or ':all'
 
 If your utility module which inherited Util::Any has utility functions and export them by Exporter-like module,
 behaviour of 'all' and '-all' or ':all' is a bit different.
@@ -880,7 +989,7 @@ behaviour of 'all' and '-all' or ':all' is a bit different.
  'all' ... export all utilities defined in your package's $Utils variables.
  '-all' or ':all' ... export all utilities including functions in your util module itself.
 
-=head2 ALTERNATIVE INHERITING
+=head3 ALTERNATIVE INHERITING
 
 Normally, you use;
 
@@ -1043,7 +1152,7 @@ The following modules can work with Util::Any.
 
 L<Exporter>, L<Exporter::Simple>, L<Sub::Exporter> and L<Perl6::Export::Attrs>.
 
-The following is new module L<Util::All>, based on Util::Any.
+The following is new module Util::All, based on Util::Any.
 
  http://github.com/ktat/Util-All
 

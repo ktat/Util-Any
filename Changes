@@ -1,5 +1,10 @@
 Revision history for Util-Any
 
+0.15    2009/09/29 04:17
+	fix bug: -as doesn't work for renamed function.
+ 	now, can choose how to load plugin. 'lazy', 'eager' or '0'.
+          default is 'lazy'.
+
 0.14    2009/09/26 11:02
   	add pluggable feature.
   	performance improvement.

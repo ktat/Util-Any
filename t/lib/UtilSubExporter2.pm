@@ -30,15 +30,22 @@ Sub::Exporter::setup_exporter
 
 our $Utils = clone $Util::Any::Utils;
 $Utils->{-l2s} = [
-		  ['List::Util', '', [qw(first min minstr max maxstr sum)]],
-		  {
-		   'hoge' => \&hoge_generator, # generator
-		   'hogehoge' => 'hello', # &hello
-		  }
+                  ['List::Util', '',,
+                  {
+                   -select => [qw(first min minstr max maxstr sum)],
+                  }
+                  ],
+                  [
+                   'UtilSubExporter2', '',
+                   {
+                    'hoge' => \&hoge_generator, # generator
+                    'hogehoge' => 'hello', # &hello
+                   }
+                  ]
                 ];
 
 sub hello { "hello there" }
 sub askme { "what you will" }
 sub hi    { "hi there" }
-
+sub hoge_generator {};
 1;
