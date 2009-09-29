@@ -47,5 +47,5 @@ $Utils->{-l2s} = [
 sub hello { "hello there" }
 sub askme { "what you will" }
 sub hi    { "hi there" }
-sub hoge_generator {};
+sub hoge_generator { sub {} };
 1;

@@ -31,8 +31,12 @@ sub import {
       = (delete @{$_[-1]}{qw/prefix module_prefix debug smart_rename plugin/});
     pop @_ unless %{$_[-1]};
   }
-  $opt{$_} ||= 0        foreach qw/prefix module_prefix debug smart_rename/;
-  $opt{plugin} = 'lazy' if not defined $opt{plugin};
+  $opt{$_} ||= 0 foreach qw/prefix module_prefix debug smart_rename/;
+  if (not defined $opt{plugin}) {
+    $opt{plugin} = 'lazy';
+  } elsif ($opt{plugin} and $opt{plugin} ne 'eager') {
+    Carp::croak "wrong option is passed for plugin: " . $opt{plugin};
+  }
 
   @_ = %{$_[0]} if @_ == 1 and ref $_[0] eq 'HASH';
 
@@ -48,81 +52,123 @@ sub import {
       }
     }
   }
-  my ($arg, $want) = $pkg->_arrange_args(\@_, $config, $caller, \%opt);
-  foreach my $kind (keys %$want) {
-    my ($prefix, $module_prefix, $options) = ('', '', []);
-    Carp::croak "$pkg doesn't have such kind of functions : $kind" unless exists $config->{$kind};
-    my ($funcs, $local_definition, $kind_prefix) = $pkg->_func_definitions($kind, $want->{$kind});
+  my ($arg, $want_kind) = $pkg->_arrange_args(\@_, $config, $caller, \%opt);
+  foreach my $kind (keys %$want_kind) {
+    # Carp::croak "$pkg doesn't have such kind of functions : $kind"
+    # unless exists $config->{$kind};
+    $pkg->_kind_exporter($caller, $config->{$kind}, $kind, $want_kind->{$kind}, \%opt);
+  }
+}
 
-    foreach my $class (@{$config->{$kind}}) { # $class is class name or array ref
-      # use Tie::Trace 'watch';
-      # watch my @funcs;
-      my %want_funcs;
-      @want_funcs{@{$funcs->{$kind} || []}} = ();
-      ($class, $module_prefix, $options) = @$class if ref $class;
-      my $k = lc(join "", $kind =~m{(\w+)}go);
-      $prefix = $kind_prefix                             ? $kind_prefix   :
-                ($opt{module_prefix} and $module_prefix) ? $module_prefix :
-                 $opt{prefix}                            ? lc($k) . '_'   :
-                 $opt{smart_rename}                      ? $pkg->_create_smart_rename($k) : '';
+sub _kind_exporter {
+  my ($pkg, $caller, $config, $kind, $import_setting, $opt) = @_;
+  my ($funcs, $local_definition, $kind_prefix) = $pkg->_func_definitions($import_setting);
+  my ($kind_word, $prefix, %want_funcs, %exported, %class_func) = (lc(join "", $kind =~m{(\w+)}go), '');
+  @want_funcs{@$funcs} = ();
 
-      my $evalerror = '';
-      if ($evalerror = do { local $@; eval {my $path = $class; $path =~s{::}{/}go; require $path. ".pm"; $evalerror = $@ }; $@}) {
+  foreach my $class_config (@$config) { # $class_config is class name or array ref
+    my ($class, $module_prefix, $config_options) = ref $class_config ? @$class_config : ($class_config, '', '');
+
+    my $evalerror = '';
+    if ($evalerror = do { local $@; eval {my $path = $class; $path =~s{::}{/}go; require $path. ".pm"; $evalerror = $@ }; $@}) {
       # if ($evalerror = do { local $@; eval "require $class";  $evalerror = $@ }) {
-        $opt{debug} == 2 ? Carp::croak $evalerror : Carp::carp $evalerror;
-      }
-      my @funcs;
-      my (%rename, %exported);
-      if (ref $options eq 'HASH') {
-        # Like the following setting.
-        #
-        # {
-        #  'first' => 'list_first', # first as list_first
-        #  'min'   => \&build_min_reformatter,
-        #  -select => ['first', 'sum', 'shuffle'],
-        # }
+      $opt->{debug} == 2 ? Carp::croak $evalerror : Carp::carp $evalerror;
+    }
 
-        if (exists $options->{-select}) {
-          Carp::croak "cannot use -except & -select in same time." if exists $options->{-except};
-          @funcs = @{$options->{-select}}
-        } elsif (exists $options->{-except}) {
-          my %except;
-          @except{@{$options->{-except}}} = ();
-          @funcs = grep !exists $except{$_}, @{_all_funcs_in_class($class)};
-        } elsif (not @funcs) {
-          @funcs = @{_all_funcs_in_class($class)};
-        }
-        my %tmp;
-        @tmp{%want_funcs ? keys %want_funcs : grep(!/^-/, keys %$options)} = ();
-        foreach my $function (keys %tmp) {
-          next if not defined $options->{$function};
-          if (ref $options->{$function} eq 'CODE') {
-            my $gen = $options->{$function};
-            if (%$local_definition) {
-              foreach my $def (@{$local_definition->{$function}}) {
-                my %arg;
-                $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
-                ExportTo::export_to($caller => {(delete $def->{-as} || $function)
-                                                => $gen->($pkg, $class, $function, \%arg)});
-              }
-            } else {
-              ExportTo::export_to($caller => {$function => $gen->($pkg, $class, $function, {})});
-            }
-            $exported{$function} = undef;
-            delete $want_funcs{$function};
-          } elsif (defined &{$class . '::' . $function}) {
-            push @funcs , $function;
-            $rename{$function} = $options->{$function};
-          }
-        }
-      } elsif(ref $options eq 'ARRAY') {
-        push @funcs, @$options;
-      } else {
+    $prefix = $kind_prefix                       ? $kind_prefix                           :
+      ($opt->{module_prefix} and $module_prefix) ? $module_prefix                         :
+      $opt->{prefix}                             ? lc($kind_word) . '_'                   :
+      $opt->{smart_rename}                       ? $pkg->_create_smart_rename($kind_word) : '';
+
+    my (@funcs, %rename);
+    if (ref $config_options eq 'HASH') {
+      # -kind => {'first' => 'list_first', # first as list_first
+      #           'min'   => \&build_min_reformatter,
+      #           -select => ['first', 'sum', 'shuffle'] }
+
+      if (exists $config_options->{-select}) {
+        Carp::croak "cannot use -except & -select in same time." if exists $config_options->{-except};
+        @funcs = @{$config_options->{-select}}
+      } elsif (exists $config_options->{-except}) {
+        my %except;
+        @except{@{$config_options->{-except}}} = ();
+        @funcs = grep !exists $except{$_}, @{_all_funcs_in_class($class)};
+      } elsif (not @funcs) {
         @funcs = @{_all_funcs_in_class($class)};
       }
-      @funcs = grep !exists $exported{$_}, @funcs;
-      $pkg->_do_export($caller, $class, \@funcs, \%want_funcs, $local_definition, \%rename, $prefix, $kind_prefix);
+      foreach my $function (%want_funcs ? (grep {defined $config_options->{$_}} keys %want_funcs) : grep !/^-/, keys %$config_options) {
+        if (ref(my $gen = $config_options->{$function}) eq 'CODE') {
+          # Like Sub::Exporter generator
+          if (exists $local_definition->{$function}) {
+            foreach my $def (@{$local_definition->{$function}}) {
+              my %arg;
+              $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
+              ExportTo::export_to($caller => {($def->{-as} || $function)
+                                              => $gen->($pkg, $class, $function, \%arg)});
+
+
+            }
+          } else {
+            ExportTo::export_to($caller => {$prefix . $function => $gen->($pkg, $class, $function, {})});
+          }
+          $exported{$function} = undef;
+        } elsif (defined &{$class . '::' . $function}) {
+          push @funcs , $function;
+          $rename{$function} = $config_options->{$function};
+        }
+      }
+    } else {
+      @funcs = ref $config_options eq 'ARRAY' ? @$config_options : @{_all_funcs_in_class($class)};
     }
+    $class_func{$class} = [\@funcs, \%rename];
+  }
+  foreach my $class (keys %class_func) {
+    $pkg->_do_export($caller, $class, $class_func{$class}->[0], \%want_funcs, \%exported,
+                     $local_definition, $class_func{$class}->[1], $prefix, $kind_prefix);
+  }
+}
+
+sub _do_export {
+  my ($pkg, $caller, $class, $funcs, $want_funcs, $exported, $local_definition, $rename, $prefix, $kind_prefix) = @_;
+
+  my %reverse_rename = reverse %$rename;
+  if (%$local_definition) {
+    foreach my $func (keys %$local_definition) {
+      next if exists $exported->{$func};
+      next if %$want_funcs and not exists $want_funcs->{$func};
+
+      foreach my $def (@{$local_definition->{$func}}) {
+        if (ref $def eq 'HASH') {
+          my $local_rename = $def->{-as} || '';
+          my $original_func = $reverse_rename{$func} || $func;
+          if (do { no strict 'refs'; defined &{$class . '::' . $original_func} }) {
+            my $function_name =
+              ($local_rename ? $local_rename                                                :
+               $prefix       ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) : $func);
+            ExportTo::export_to($caller => { $function_name => $class . '::' . $original_func });
+          }
+        } else {
+          Carp::croak("setting for fucntions must be hash ref for : $func => "
+                      . (ref $def eq 'ARRAY' ? "[". join(", ",@$def) ."]" : $def));
+        }
+      }
+    }
+  } elsif (@$funcs) {
+    no strict 'refs';
+    @$funcs = grep defined &{$class . '::'. $_}, @$funcs;
+    return unless @$funcs;
+  }
+
+  my @export_funcs = grep !exists $local_definition->{$_}, @$funcs;
+  @export_funcs = grep exists $want_funcs->{$_}, @export_funcs if %$want_funcs;
+  if ($prefix or %$rename) {
+    if (ref $prefix eq 'CODE') {
+      ExportTo::export_to($caller => {map { $prefix->($_) => $class . '::' . $_} @export_funcs});
+    } else {
+      ExportTo::export_to($caller => {map { $prefix . ($rename->{$_} || $_) => $class . '::' . $_} @export_funcs});
+    }
+  } else {
+    ExportTo::export_to($caller => [map $class . '::' . $_, List::MoreUtils::uniq @export_funcs]);
   }
 }
 
@@ -156,83 +202,20 @@ sub _create_smart_rename {
   }
 }
 
-sub _do_export {
-  my ($pkg, $caller, $class, $funcs, $want_funcs, $local_definition, $rename, $prefix, $kind_prefix) = @_;
-  my %def_funcs;
-  if (%$local_definition) {
-    foreach my $func (keys %$local_definition) {
-      next if %$want_funcs and not exists $want_funcs->{$func};
-      foreach my $def (@{$local_definition->{$func}}) {
-        if (ref $def eq 'HASH') {
-          my $local_rename = delete $def->{-as} || '';
-          my $original_func = {reverse %$rename}->{$func} || $func;
-          my $defined = 0;
-          {
-            no strict 'refs';
-            $defined = defined &{$class . '::' . $original_func};
-            # $defined = $class->can($func);
-          }
-          if (!%$def and $defined) {
-            ExportTo::export_to
-                ($caller =>
-                 {
-                  ($local_rename ? $local_rename :
-                   $prefix       ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) :
-                   $func)
-                  => $class . '::' . $original_func
-                 });
-          } else {
-            $def->{-as} = $local_rename;
-          }
-        } else {
-          Carp::croak("setting for fucntions must be hash ref for : $func => "
-                      . (ref $def eq 'ARRAY' ? "[". join(", ",@$def) ."]" : $def));
-        }
-        $def_funcs{$func} = 1;
-      }
-    }
-  } elsif (@$funcs) {
-    no strict 'refs';
-    @$funcs = grep defined &{$class . '::'. $_}, @$funcs;
-    # @$funcs = grep defined $class->UNIVERSAL::can($_), @$funcs;
-    return unless @$funcs;
-  }
-
-  my @export_funcs = grep !exists $def_funcs{$_}, ($kind_prefix or !@$funcs) ? @{_all_funcs_in_class($class)} : @$funcs;
-  @export_funcs = grep exists $want_funcs->{$_}, @export_funcs if %$want_funcs;
-  ExportTo::export_to($caller => ($prefix or %$rename)
-                      ? {map {(ref $prefix ne 'CODE' ? $prefix . ($rename->{$_} || $_) : $prefix->($_)) => $class . '::' . $_} @export_funcs}
-                      : [map $class . '::' . $_, List::MoreUtils::uniq @export_funcs]);
-}
-
-sub _insert_want_arg {
-  my ($config, $kind, $setting, $want, $arg) = @_;
-  $kind = lc $kind;
-  exists $config->{$kind} ?
-    $want->{$kind} = $setting:
-    push @$arg, $kind, defined $setting ? $setting : ();
-}
-
 sub _arrange_args {
   my ($pkg, $org_args, $config, $caller, $opt) = @_;
-  my (@arg, %want);
+  my (@arg, %want_kind);
   my $import_module = $pkg->_use_import_module;
   if (@$org_args) {
     @$org_args = %{$org_args->[0]} if ref $org_args->[0] eq 'HASH';
-    if (lc($org_args->[0]) eq 'all') {
+    if (lc($org_args->[0]) =~ /^([:-])?all/) {
+      my $inherit_all = $1;
       $pkg->_lazy_load_plugins_all($config) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
       # import all functions which Util::Any proxy
-      @want{keys %$config} = ();
-    } elsif (lc($org_args->[0]) =~ /^[:-]all$/) {
-      $pkg->_lazy_load_plugins_all($config) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
-      # import ALL functions
-      @want{keys %$config} = ();
-      if ($import_module) {
-        if ($import_module eq 'Expoter'          or
-            $import_module eq 'Exporter::Simple'
-           ) {
-          no strict 'refs';
-          no warnings;
+      @want_kind{keys %$config} = ();
+      if ($inherit_all and $import_module) {
+        if ($import_module eq 'Expoter' or $import_module eq 'Exporter::Simple') {
+          no strict 'refs'; no warnings;
           push @arg, ':all' if ${$pkg . '::EXPORT_TAGS'}{":all"};
         } elsif ($import_module eq 'Sub::Exporter') {
           push @arg, '-all';
@@ -240,18 +223,19 @@ sub _arrange_args {
           push @arg, ':ALL';
         }
       }
-    } elsif (List::MoreUtils::any {ref $_} @$org_args) {
-      $pkg->_lazy_load_plugins($config, $org_args) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
-      for (my $i = 0; $i < @$org_args; $i++) {
-        my $kind = $org_args->[$i];
-        my $setting = $org_args->[$i + 1] ? $org_args->[++$i] : undef;
-        _insert_want_arg($config, $kind, $setting, \%want, \@arg);
-      }
     } else {
-      # export specified kinds
-      $pkg->_lazy_load_plugins($config, $org_args) if  $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
-      foreach my $kind (@$org_args) {
-        _insert_want_arg($config, $kind, undef, \%want, \@arg);
+      $pkg->_lazy_load_plugins($config, $org_args) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
+      if (List::MoreUtils::any {ref $_} @$org_args) {
+        for (my $i = 0; $i < @$org_args; $i++) {
+          my $kind = $org_args->[$i];
+          my $import_setting = $org_args->[$i + 1] ? $org_args->[++$i] : undef;
+          _insert_want_arg($config, $kind, $import_setting, \%want_kind, \@arg);
+        }
+      } else {
+        # export specified kinds
+        foreach my $kind (@$org_args) {
+          _insert_want_arg($config, $kind, undef, \%want_kind, \@arg);
+        }
       }
     }
   }
@@ -260,7 +244,18 @@ sub _arrange_args {
   } else {
     Carp::carp("unknown arguments: @arg") if @arg;
   }
-  return \@arg, \%want;
+  return \@arg, \%want_kind;
+}
+
+sub _insert_want_arg {
+  # distinct arguments to want(for Util::Any) and args(for other).
+  my ($config, $kind, $import_setting, $want_kind, $arg) = @_;
+  $kind = lc $kind;
+  if (exists $config->{$kind}) {
+    $want_kind->{$kind} = $import_setting;
+  } else {
+    push @$arg, $kind, defined $import_setting ? $import_setting : ();
+  }
 }
 
 sub _lazy_load_plugins_all {
@@ -277,17 +272,17 @@ sub _lazy_load_plugins_all {
 
 sub _lazy_load_plugins {
   my ($pkg, $config, $org_args) = @_;
-  my @all;
-  my @kinds = map { ref $org_args->[$_] ? () :
-                      do {
-                        my $k = $org_args->[$_];
-                        $k =~ s{\W}{}g;
-                        $k =~ s{_}{::}g;
-                        $k =~ s{^(.+)(::all)$}{$1|${1}::\\w+} and push @all, $_;
-                        $k;
-                      }
-                    } (0 .. $#{$org_args});
+  my (@all, @kinds);
+  for my $i (0 .. $#{$org_args}) {
+    next if ref $org_args->[$i];
+    my $k = $org_args->[$i];
+    $k =~ s{\W}{}g;
+    $k =~ s{_}{::}g;
+    $k =~ s{^(.+)(::all)$}{$1|${1}::\\w+} and push @all, $i;
+    push @kinds, $k;
+  }
   return unless @kinds;
+
   my $regex = "^${pkg}::Plugin::(?:". join("|", @kinds) . ')';
   my $all_regex = '';
   if (@all) {
@@ -310,8 +305,9 @@ sub _lazy_load_plugins {
 }
 
 sub _func_definitions {
-  my ($pkg, $kind, $want_func_definition, $kind_prefix) = @_;
-  my (%funcs, %local_definition);
+  my ($pkg, $want_func_definition) = @_;
+  my $kind_prefix;
+  my (@funcs, %funcs, %local_definition);
   if (ref $want_func_definition eq 'HASH') {
     # list => {func => {-as => 'rename'}};  list => {-prefix => 'hoge_' }
     $kind_prefix = $want_func_definition->{-prefix}
@@ -327,16 +323,16 @@ sub _func_definitions {
         if ($k eq '-prefix') {
           $kind_prefix = $v;
         } else {
-          push @{$funcs{$kind} ||= []}, $k;
+          push @funcs, $k;
           push @{$local_definition{$k} ||= []}, $v;
         }
       } else {
-        push @{$funcs{$kind} ||= []}, $k;
+        push @funcs, $k;
       }
     }
-    @{$funcs{$kind} ||= []} = List::MoreUtils::uniq @{$funcs{$kind} ||= []};
+    @funcs = List::MoreUtils::uniq @funcs;
   }
-  return \%funcs, \%local_definition, $kind_prefix || '';
+  return \@funcs, \%local_definition, $kind_prefix || '';
 }
 
 sub _do_base_import {
@@ -409,7 +405,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 
 =head1 SYNOPSIS
 

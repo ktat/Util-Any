@@ -8,7 +8,10 @@ our $Utils =
    -test => [
              [
               'List::MoreUtils', '',
-              ['uniq'],
+              {
+               foo => sub {sub () {"foo"} },
+               -select => ['uniq'],
+              }
              ],
              [
              'List::Util', '',
@@ -16,6 +19,7 @@ our $Utils =
               -select => ['shuffle'],
               min => \&build_min_reformatter,
               max => \&build_max_reformatter,
+              hoge => sub { sub () {"hogehoge"}},
              }
             ],
             ]

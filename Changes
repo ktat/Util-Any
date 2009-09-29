@@ -1,5 +1,13 @@
 Revision history for Util-Any
 
+0.16    2009/09/30 03:16
+        fix bug: using SubExportor's generator way and select functions with rename function,
+                 didn't working correctly
+                 example: ["function", "function2", function3 => {-as => "functionX"}]
+        fix bug: using SubExporter's generator way, didn't add prefix.
+        if wrong option is passed as plugin options, Carp.
+        refactored code. fix buggy code.
+
 0.15    2009/09/29 04:17
 	fix bug: -as doesn't work for renamed function.
  	now, can choose how to load plugin. 'lazy', 'eager' or '0'.
