@@ -12,6 +12,7 @@ our %EXPORT_TAGS = (
                     'uk'    => [qw/hello/],
                     'us'    => [qw/hi/],
                     'hello' => [qw/hello_name hello_where/],
+                    'all'   => [qw/hello hi askme/],
                    );
 
 our $Utils = clone $Util::Any::Utils;

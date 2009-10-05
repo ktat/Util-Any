@@ -33,19 +33,19 @@ $Utils->{l2s} = [
                  ['List::Util', '', [qw(first min minstr max maxstr sum)]],
                 ];
 
-sub import {
-  my $pkg = shift;
-  my $caller = (caller)[0];
-
-  no strict 'refs';
-  eval "package $caller; $pkg" . '->Util::Any::import(@_);';
-  my @arg = grep !exists $Utils->{$_}, @_;
-  if (@_ and @arg) {
-    eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg)';
-  } elsif (!@_) {
-    eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import';
-  }
-  return;
-}
+## sub import {
+##   my $pkg = shift;
+##   my $caller = (caller)[0];
+## 
+##   no strict 'refs';
+##   eval "package $caller; $pkg" . '->Util::Any::import(@_);';
+##   my @arg = grep !exists $Utils->{$_}, @_;
+##   if (@_ and @arg) {
+##     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg)';
+##   } elsif (!@_) {
+##     eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import';
+##   }
+##   return;
+## }
 
 1;

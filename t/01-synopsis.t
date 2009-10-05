@@ -82,3 +82,11 @@ is_deeply([li_uniq qw/1 0 1 2 3 3/], [1,0,2,3]);
 is(l_min(qw/10 9 8 4 5 7/), 4);
 ok(!defined &l_uniq);
 
+package EE;
+use Test::More;
+
+use Util::Any -list => {uniq => {-as => 'li_uniq'}, -prefix => "ll_"}, {smart_rename => 1};
+is_deeply([li_uniq qw/1 0 1 2 3 3/], [1,0,2,3]);
+is(ll_min(qw/10 9 8 4 5 7/), 4);
+ok(!defined &ll_uniq);
+

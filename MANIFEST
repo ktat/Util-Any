@@ -28,7 +28,7 @@ t/02-util-func-scalar-prefix.t
 t/02-util-func-scalar-prefix-sign.t
 t/01-util-kind-all-prefix.t
 t/03-debug.t
-t/03-debug.t
+t/03-priority.t
 t/04-option.t
 t/04-option-select.t
 t/04-option-except.t
@@ -38,15 +38,19 @@ t/05-smart-rename.t
 t/06-perl6-export-attrs.t
 t/06-perl6-export-attrs2.t
 t/06-perl6-export-attrs-no-args.t
+t/06-perl6-export-attrs-all.t
 t/07-perl6-export-attrs.t
 t/07-perl6-export-attrs2.t
 t/07-perl6-export-attrs-no-args.t
 t/08-exporter-simple.t
 t/08-exporter-simple2.t
 t/08-exporter-simple-no-args.t
+t/08-exporter-simple-all.t
 t/09-exporter.t
 t/09-exporter2.t
+t/09-exporter-all.t
 t/09-exporter-no-args.t
+t/10-sub-exporter-all.t
 t/10-sub-exporter.t
 t/10-sub-exporter2.t
 t/10-sub-exporter-no-args.t
@@ -56,6 +60,7 @@ t/10-sub-exporter-generator2.t
 t/11-sub-exporter-all.t
 t/11-sub-exporter-full-all.t
 t/12-sub-exporter-like-export.t
+t/12-sub-exporter-like-export-with-args.t
 t/13-inherit.t
 t/14-pluggable.t
 t/14-pluggable_lazy.t

@@ -1,5 +1,13 @@
 Revision history for Util-Any
 
+0.17    2009/10/06 03:32
+	add -args option to give common arguments to all functions in same kind.
+  	enable to work -all with kind setting. for example
+	       -all, -list => {...}
+	fix typo: inherit Perl6::Exprot::Attr and ':ALL' keyword didn't work correctly.
+	fix typo: inherit Exproer and ':all' keyword didn't work correctly.
+        Thanks to  Richard Jelinek, again.
+
 0.16    2009/09/30 03:16
         fix bug: using SubExportor's generator way and select functions with rename function,
                  didn't working correctly
@@ -58,7 +66,7 @@ Revision history for Util-Any
 
 0.07    2009/04/12 03:58
         Fix bug when inheriting
-        Thanks to Rechard Jelinek
+        Thanks to  Richard Jelinek
 
 0.06    2009/03/22 14:55
         support Exporter and Exporter::Simple

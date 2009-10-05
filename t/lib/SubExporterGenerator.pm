@@ -20,6 +20,7 @@ our $Utils =
               min => \&build_min_reformatter,
               max => \&build_max_reformatter,
               hoge => sub { sub () {"hogehoge"}},
+              check_default => \&check_default,
              }
             ],
             ]
@@ -41,6 +42,13 @@ sub build_max_reformatter {
   sub {
     my @args = @_;
     $code->(@args, ($option[0]->{upper} || ()));
+  }
+}
+
+sub check_default {
+  my ($pkg, $class, $name, $args, $default_args) = @_;
+  sub {
+    return $default_args;
   }
 }
 
