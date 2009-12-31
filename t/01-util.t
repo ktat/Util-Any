@@ -37,6 +37,10 @@ my @tests = (
               [ [ scalar => {-prefix => 'sc_'}], {} ],
               [ [], {scalar => {-prefix => 'sc_'}} ],
              ],
+             [
+              [ ['string', list => ['any', 'uniq']], {} ],
+              [ [], {string => undef, list => ['any', 'uniq']} ],
+             ],
             );
 
 for my $test (@tests) {

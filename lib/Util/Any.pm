@@ -3,8 +3,6 @@ package Util::Any;
 use ExportTo ();
 use Clone ();
 use Carp ();
-use List::MoreUtils ();
-use Module::Pluggable ();
 use warnings;
 use strict;
 
@@ -20,6 +18,22 @@ our $Utils = {
 $Utils->{'-' . $_} = $Utils->{$_} foreach keys %$Utils;
 
 our $SubExporterImport = 'do_import';
+
+# borrow from List::MoreUtils
+sub _any (&@) {
+    my $f = shift;
+    return if ! @_;
+    for (@_) {
+        return 1 if $f->();
+    }
+    return 0;
+}
+
+sub _uniq (@) {
+    my %h;
+    map { $h{$_}++ == 0 ? $_ : () } @_;
+}
+# /end
 
 sub import {
   my ($pkg, $caller) = (shift, (caller)[0]);
@@ -166,7 +180,7 @@ sub _do_export {
       ExportTo::export_to($caller => {map { $prefix . ($rename->{$_} || $_) => $class . '::' . $_} @export_funcs});
     }
   } else {
-    ExportTo::export_to($caller => [map $class . '::' . $_, List::MoreUtils::uniq @export_funcs]);
+    ExportTo::export_to($caller => [map $class . '::' . $_, _uniq @export_funcs]);
   }
 }
 
@@ -206,7 +220,8 @@ sub _arrange_args {
   my $import_module = $pkg->_use_import_module;
   my $all_improt = 0;
   if (@$org_args) {
-    @$org_args = %{$org_args->[0]} if ref $org_args->[0] eq 'HASH';
+    @$org_args = %{$org_args->[0]} if ref $org_args->[0] and (ref $org_args->[0]) eq 'HASH';
+    $opt->{'plugin'} ||= '';
     if (lc($org_args->[0]) =~ /^([:-])?all/) {
       my $all_import = shift @$org_args;
       my $inherit_all = $1;
@@ -227,10 +242,10 @@ sub _arrange_args {
     } elsif ($opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins')) {
       $pkg->_lazy_load_plugins($config, $org_args);
     }
-    if (List::MoreUtils::any {ref $_} @$org_args) {
+    if (_any {ref $_} @$org_args) {
       for (my $i = 0; $i < @$org_args; $i++) {
         my $kind = $org_args->[$i];
-        my $import_setting = $org_args->[$i + 1] ? $org_args->[++$i] : undef;
+        my $import_setting = ref $org_args->[$i + 1] ? $org_args->[++$i] : undef;
         _insert_want_arg($config, $kind, $import_setting, \%want_kind, \@arg);
       }
     } else {
@@ -334,7 +349,7 @@ sub _func_definitions {
         push @wanted_funcs, $k;
       }
     }
-    @wanted_funcs = List::MoreUtils::uniq @wanted_funcs;
+    @wanted_funcs = _uniq @wanted_funcs;
   }
   return \@wanted_funcs, \%local_definition, $kind_prefix || '', $kind_args || {};
 }
@@ -391,6 +406,7 @@ sub _base_import {
       # nothing to do
     } elsif ($flg eq '-pluggable') {
       # pluggable
+      require Module::Pluggable;
       Module::Pluggable->import(require => 0, search_path => [$caller . '::Plugin'], inner => 0);
       my @plugins = $pkg->plugins;
       *{$caller . '::_plugins'} = sub { \@plugins };
@@ -409,7 +425,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.17';
+our $VERSION = '0.18';
 
 =head1 SYNOPSIS
 
@@ -558,7 +574,7 @@ the following code:
  use Util::Yours -net_amazon; # Plugin::Net::Amazon is loaded
  use Util::Yours -net_all; # Plugin::Net and Plugin::Net::* is loaded
 
-C<_all> is special keyword. see "NOTE ABOUT all KEYWORD".
+C<_all> is special keyword. see L<"NOTE ABOUT all KEYWORD">.
 
 =item debug => 1/2
 
@@ -746,19 +762,23 @@ if module's prefix is defined in class(not defined in Util::Any), use 3, or use 
 
 B<all> is special keyword, so it has some restriction.
 
-=head2 use module with 'all' cannot take any sequential arugments
+=head2 use module with 'all' cannot take its arugments
 
  use Util::Any -all; # or 'all', ':all'
 
-This cannot take sequential arguments. For example;
+This cannot take sequential arguments for "all". For example;
 
  NG: use Util::Any -all => ['shuffle'];
 
-=head2 -plugin_module_all cannot take any sequential arguments
+When sequential arguments is kind's, it's ok.
+
+ use Util::Any -all, -list => ['unique'];
+
+=head2 -plugin_module_all cannot take its arguments
 
  use Util::Yours -plugin_name_all;
 
-This cannot take sequential arguments. For example:
+This cannot take sequential arguments for it. For example:
 
  NG: use Util::Yours -plugin_name_all => ['some_function'];
 
@@ -1244,7 +1264,7 @@ The following is new module Util::All, based on Util::Any.
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008-2009 Ktat, all rights reserved.
+Copyright 2008-2010 Ktat, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

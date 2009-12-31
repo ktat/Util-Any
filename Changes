@@ -1,11 +1,15 @@
 Revision history for Util-Any
 
+0.18    2010/01/01 06:17:05
+        remove List::MoreUtils from Util::Any itself(they are left in definition).
+        Fix bug: didn't understand argument order, collectory in some case.
+
 0.17    2009/10/06 03:32
 	add -args option to give common arguments to all functions in same kind.
   	enable to work -all with kind setting. for example
 	       -all, -list => {...}
-	fix typo: inherit Perl6::Exprot::Attr and ':ALL' keyword didn't work correctly.
-	fix typo: inherit Exproer and ':all' keyword didn't work correctly.
+	fix typo: inherit Perl6::Export::Attr and ':ALL' keyword didn't work correctly.
+	fix typo: inherit Exporter and ':all' keyword didn't work correctly.
         Thanks to  Richard Jelinek, again.
 
 0.16    2009/09/30 03:16
