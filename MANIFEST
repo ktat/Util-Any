@@ -14,6 +14,7 @@ t/01-unit.t
 t/01-util.t
 t/01-util-kind-list.t
 t/01-util-kind-scalar.t
+t/01-util-kind-data.t
 t/01-util-kind-hash.t
 t/01-util-kind-debug.t
 t/01-util-kind-my-coron.t

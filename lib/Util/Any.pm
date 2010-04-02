@@ -7,13 +7,14 @@ use warnings;
 use strict;
 
 our $Utils = {
-              list   => [ qw/List::Util List::MoreUtils/ ],
-              scalar => [ qw/Scalar::Util/ ],
+              list   => [ qw/List::Util List::MoreUtils List::Pairwise/ ],
+              data   => [ qw/Scalar::Util/ ],
               hash   => [ qw/Hash::Util/ ],
               debug  => [ ['Data::Dumper', '', ['Dumper']] ],
               string => [ qw/String::Util String::CamelCase/ ],
              };
 
+$Utils->{'scalar'} = $Utils->{data};
 # I'll delete no dash group in the above, in future.
 $Utils->{'-' . $_} = $Utils->{$_} foreach keys %$Utils;
 
@@ -425,7 +426,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.18';
+our $VERSION = '0.19';
 
 =head1 SYNOPSIS
 
@@ -592,7 +593,9 @@ Kinds of functions and list of exported functions are below.
 Note that these modules and version are on my environment(Perl 5.8.4).
 So, it must be diffrent on your environment.
 
-=head2 scalar
+=head2 -data
+
+NOTE THAT: its old name is 'scalar' (you can use the name, yet).
 
 from Scalar::Util (1.19)
 
@@ -609,7 +612,7 @@ from Scalar::Util (1.19)
  tainted
  weaken
 
-=head2 hash
+=head2 -hash
 
 from Hash::Util (0.05)
 
@@ -621,7 +624,7 @@ from Hash::Util (0.05)
  unlock_keys
  unlock_value
 
-=head2 list
+=head2 -list
 
 from List::Util (1.19)
 
@@ -668,7 +671,19 @@ from List::MoreUtils (0.21)
  uniq
  zip
 
-=head2 string
+from List::Pairwise (0.29)
+
+ mapp
+ grepp
+ firstp
+ lastp
+ map_pairwise
+ grep_pairwise
+ first_pairwise
+ last_pairwise
+ pair
+
+=head2 -string
 
 from String::Util (0.11)
 
@@ -691,7 +706,7 @@ from String::CamelCase (0.01)
  decamelize
  wordsplit
 
-=head2 debug
+=head2 -debug
 
 from Data::Dumper (2.121)
 

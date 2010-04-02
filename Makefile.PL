@@ -14,6 +14,7 @@ WriteMakefile(
 	'ExportTo'          => 0,
 	'List::Util'        => 0,
 	'List::MoreUtils'   => 0,
+	'List::Pairwise'    => 0,
 	'Hash::Util'        => 0,
 	'Scalar::Util'      => 0,
 	'Data::Dumper'      => 0,

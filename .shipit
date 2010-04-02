@@ -1,7 +1,6 @@
 steps = FindVersion, ChangeVersion, CheckChangeLog, DistTest, Commit, Tag, MakeDist, UploadCPAN, Twitter
 
-svk.tagpattern = Util-Any-%v
-# svn.tagpattern = http://svn.coderepos.org/share/lang/perl/Util-Any/tags/Util-Any-%v
+svn.tagpattern = Util-Any-%v
 
 twitter.config = ~/.twitterrc
 twitter.distname = Util-Any
