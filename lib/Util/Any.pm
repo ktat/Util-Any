@@ -121,7 +121,11 @@ sub _kind_exporter {
                                               => $gen->($pkg, $class, $function, \%arg, $kind_args)});
             }
           } else {
-            ExportTo::export_to($caller => {$prefix . $function => $gen->($pkg, $class, $function, {}, $kind_args)});
+            if ($function ne '.') {
+              ExportTo::export_to($caller => {$prefix . $function => $gen->($pkg, $class, $function, {}, $kind_args)});
+            } else {
+              $gen->($pkg, $class, $function, {}, $kind_args);
+            }
           }
           $exported{$function} = undef;
         } elsif (defined &{$class . '::' . $function}) {
@@ -426,7 +430,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.19';
+our $VERSION = '0.20';
 
 =head1 SYNOPSIS
 
@@ -1047,7 +1051,24 @@ And write as the following:
 
 thousands_sep and int_curr_symbol are given to all of -number kind of function.
 
-=head2 USE PLUGGABLE FEATURE FOR YOUR MODULE
+=head2 DO SOMETHING WITHOUT EXPORTING ANYTHING
+
+ -strict => [
+    [ 'strict' => {
+        '.' => sub {
+           strict->import();
+           warnings->import();
+        },
+      }
+    ];
+
+This definition works like as pragma.
+
+ use Util::Yours -strict;
+
+function name '.' is special. This name is not exported and only execute the code in the definition.
+
+=head2 ADD PLUGGABLE FEATURE FOR YOUR MODULE
 
 Just add a flag -Pluggbale.
 

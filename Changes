@@ -1,5 +1,8 @@
 Revision history for Util-Any
 
+0.20    2010/04/12 05:27:00
+        add feature only do something without exporting anything.
+
 0.19    2010/04/03 02:00:00
         add List::Pairwise to list.
         add -data which is as same as -scalar
