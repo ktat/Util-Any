@@ -20,6 +20,8 @@ $Utils->{'-' . $_} = $Utils->{$_} foreach keys %$Utils;
 
 our $SubExporterImport = 'do_import';
 
+sub _default_kinds { }
+
 # borrow from List::MoreUtils
 sub _any (&@) {
     my $f = shift;
@@ -67,7 +69,7 @@ sub import {
       }
     }
   }
-  my ($arg, $want_kind) = $pkg->_arrange_args(\@_, $config, $caller, \%opt);
+  my ($arg, $want_kind) = $pkg->_arrange_args([$pkg->_default_kinds, @_], $config, $caller, \%opt);
   foreach my $kind (keys %$want_kind) {
     # Carp::croak "$pkg doesn't have such kind of functions : $kind"
     # unless exists $config->{$kind};
