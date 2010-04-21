@@ -66,6 +66,10 @@ t/13-inherit.t
 t/14-pluggable.t
 t/14-pluggable_lazy.t
 t/14-pluggable_no.t
+t/15-default_kinds-disable.t
+t/15-default_kinds-with-all.t
+t/15-default_kinds.t
+t/16-noexport.t
 t/lib/MyUtil.pm
 t/lib/SmartRename.pm
 t/lib/MyUtilBase.pm
@@ -85,3 +89,5 @@ t/lib/UtilPluggable.pm
 t/lib/UtilPluggable/Plugin/Pluggable.pm
 t/lib/UtilPluggable/Plugin/Pluggable2.pm
 t/lib/UtilPluggable/Plugin/Pluggable/XXX.pm
+t/lib/UtilDefaultKinds.pm
+t/lib/UtilNotExport.pm
