@@ -9,9 +9,9 @@ WriteMakefile(
     ABSTRACT_FROM       => 'lib/Util/Any.pm',
     PL_FILES            => {},
     PREREQ_PM => {
-        'Clone'             => 0,
-        'Test::More'        => 0,
 	'ExportTo'          => 0,
+	'Clone'             => 0,
+	'Test::More'        => 0.88,
 	'List::Util'        => 0,
 	'List::MoreUtils'   => 0,
 	'List::Pairwise'    => 0,

@@ -1,5 +1,9 @@
 Revision history for Util-Any
 
+0.21    2010/04/22 02:38:00
+        fix bug: _default_kinds and -all keyword doesn't work well.
+        add documentation for _default_kinds.
+
 0.20    2010/04/12 23:33:00
         add feature only execute code without exporting anything.
         add _default_kinds method to specify default kinds to export.

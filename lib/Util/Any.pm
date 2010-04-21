@@ -69,7 +69,12 @@ sub import {
       }
     }
   }
-  my ($arg, $want_kind) = $pkg->_arrange_args([$pkg->_default_kinds, @_], $config, $caller, \%opt);
+  my ($arg, $want_kind) = $pkg->_arrange_args
+    ([
+      @_ ? ($_[0] =~m{^[-:]?all$}i ?  ($_[0], $pkg->_default_kinds, @_[1 .. $#_]) : ($pkg->_default_kinds, @_))
+         : ($pkg->_default_kinds)
+     ],
+     $config, $caller, \%opt);
   foreach my $kind (keys %$want_kind) {
     # Carp::croak "$pkg doesn't have such kind of functions : $kind"
     # unless exists $config->{$kind};
@@ -164,7 +169,7 @@ sub _do_export {
             my $function_name =
               ($local_rename ? $local_rename                                                :
                $prefix       ? (ref $prefix eq 'CODE' ? $prefix->($func) : $prefix . $func) : $func);
-            ExportTo::export_to($caller => { $function_name => $class . '::' . $original_func });
+            ExportTo::export_to($caller => {$function_name => $class . '::' . $original_func});
           }
         } else {
           Carp::croak("setting for fucntions must be hash ref for : $func => "
@@ -229,7 +234,7 @@ sub _arrange_args {
   if (@$org_args) {
     @$org_args = %{$org_args->[0]} if ref $org_args->[0] and (ref $org_args->[0]) eq 'HASH';
     $opt->{'plugin'} ||= '';
-    if (lc($org_args->[0]) =~ /^([:-])?all/) {
+    if ($org_args->[0] =~ /^([:-])?all/i) {
       my $all_import = shift @$org_args;
       my $inherit_all = $1;
       $pkg->_lazy_load_plugins_all($config) if $opt->{'plugin'} eq 'lazy' and $pkg->can('_plugins');
@@ -432,7 +437,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.20';
+our $VERSION = '0.21';
 
 =head1 SYNOPSIS
 
@@ -1069,6 +1074,28 @@ This definition works like as pragma.
  use Util::Yours -strict;
 
 function name '.' is special. This name is not exported and only execute the code in the definition.
+
+
+=head2 ADD DEFAULT ARGUMENT FOR EXPORTING
+
+Define the following method.
+
+ package You::Utils -Base;
+ # ....
+ sub _default_kinds { '-list', '-string' }
+
+This means '-list' and '-string' arguments are given as default exporting arguments.
+So, these are same.
+
+ use Your::Utils;
+
+is equal to
+
+ use Your::Utils -list, -string;
+
+If you want disable default kinds.
+
+ use Your::Utils -list => [''], -string;
 
 =head2 ADD PLUGGABLE FEATURE FOR YOUR MODULE
 
