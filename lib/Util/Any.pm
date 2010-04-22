@@ -92,7 +92,7 @@ sub _kind_exporter {
 
     my $evalerror = '';
     if ($evalerror = do { local $@; eval {my $path = $class; $path =~s{::}{/}go; require $path. ".pm"; $evalerror = $@ }; $@}) {
-      # if ($evalerror = do { local $@; eval "require $class";  $evalerror = $@ }) {
+      # if ($evalerror = do { local $@; eval "require $class"; $evalerror = $@ }) {
       $opt->{debug} == 2 ? Carp::croak $evalerror : Carp::carp $evalerror;
     }
 
@@ -123,7 +123,7 @@ sub _kind_exporter {
           if (exists $local_definition->{$function}) {
             foreach my $def (@{$local_definition->{$function}}) {
               my %arg;
-              $arg{$_} = $def->{$_}  for grep !/^-/, keys %$def;
+              $arg{$_} = $def->{$_} for grep !/^-/, keys %$def;
               ExportTo::export_to($caller => {($def->{-as} || $function)
                                               => $gen->($pkg, $class, $function, \%arg, $kind_args)});
             }
@@ -136,7 +136,7 @@ sub _kind_exporter {
           }
           $exported{$function} = undef;
         } elsif (defined &{$class . '::' . $function}) {
-          push @funcs , $function;
+          push @funcs, $function;
           $rename{$function} = $config_options->{$function};
         }
       }
@@ -304,9 +304,9 @@ sub _lazy_load_plugins {
   for my $i (0 .. $#{$org_args}) {
     next if ref $org_args->[$i];
     my $k = $org_args->[$i];
-    $k =~ s{\W}{}g;
+    $k =~ s{\W+}{}g;
     $k =~ s{_}{::}g;
-    $k =~ s{^(.+)(::all)$}{$1|${1}::\\w+} and push @all, $i;
+    $k =~ s{^(.+)::all$}{$1|$1::\\w+} and push @all, $i;
     push @kinds, $k;
   }
   return unless @kinds;
@@ -336,7 +336,7 @@ sub _func_definitions {
   my ($pkg, $want_func_definition) = @_;
   my ($kind_prefix, $kind_args, @wanted_funcs, %funcs, %local_definition);
   if (ref $want_func_definition eq 'HASH') {
-    # list => {func => {-as => 'rename'}};  list => {-prefix => 'hoge_' }
+    # list => {func => {-as => 'rename'}}; list => {-prefix => 'hoge_' }
     $kind_prefix = $want_func_definition->{-prefix}
       if exists $want_func_definition->{-prefix};
     $kind_args = $want_func_definition->{-args}
@@ -384,7 +384,7 @@ sub _do_base_import {
   } elsif ($import_module eq 'Sub::Exporter') {
     no strict 'refs';
     no warnings;
-    my $import_name =  ${"${pkg}::SubExporterImport"} || $Util::Any::SubExporterImport;
+    my $import_name = ${"${pkg}::SubExporterImport"} || $Util::Any::SubExporterImport;
     eval "package $caller; $pkg" . '->$import_name(@$arg);';
   }
   die $@ if $@;

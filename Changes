@@ -17,12 +17,12 @@ Revision history for Util-Any
         Fix bug: didn't understand argument order, collectory in some case.
 
 0.17    2009/10/06 03:32
-	add -args option to give common arguments to all functions in same kind.
-  	enable to work -all with kind setting. for example
-	       -all, -list => {...}
-	fix typo: inherit Perl6::Export::Attr and ':ALL' keyword didn't work correctly.
-	fix typo: inherit Exporter and ':all' keyword didn't work correctly.
-        Thanks to  Richard Jelinek, again.
+        add -args option to give common arguments to all functions in same kind.
+        enable to work -all with kind setting. for example
+               -all, -list => {...}
+        fix typo: inherit Perl6::Export::Attr and ':ALL' keyword didn't work correctly.
+        fix typo: inherit Exporter and ':all' keyword didn't work correctly.
+        Thanks to Richard Jelinek, again.
 
 0.16    2009/09/30 03:16
         fix bug: using SubExportor's generator way and select functions with rename function,
@@ -33,15 +33,15 @@ Revision history for Util-Any
         refactored code. fix buggy code.
 
 0.15    2009/09/29 04:17
-	fix bug: -as doesn't work for renamed function.
- 	now, can choose how to load plugin. 'lazy', 'eager' or '0'.
+        fix bug: -as doesn't work for renamed function.
+        now, can choose how to load plugin. 'lazy', 'eager' or '0'.
           default is 'lazy'.
 
 0.14    2009/09/26 11:02
-  	add pluggable feature.
-  	performance improvement.
-	    if empty -select option is passed,
-	    don't seek class's all functions.
+        add pluggable feature.
+        performance improvement.
+            if empty -select option is passed,
+            don't seek class's all functions.
         warn when unkown arguments are passed.
 
 0.13    2009/09/24 13:53
@@ -52,37 +52,37 @@ Revision history for Util-Any
         fix typo in document
 
 0.12    2009/09/15 16:29
-  	fix bug importing with specific functions
- 	    for example, -list => ['uniq'];
-	    it occurs when one kind has multiple modules.
-	    This bug is from 0.08
-	fix bug, export like SubExpoter (rename using -as) didn't work.
-	fix bug, the following importing didn't work.
-	    use Util::Any {-list => ['uniq']};
-	    This was bug of documennt, but now work.
-	fix document
+        fix bug importing with specific functions
+            for example, -list => ['uniq'];
+            it occurs when one kind has multiple modules.
+            This bug is from 0.08
+        fix bug, export like SubExpoter (rename using -as) didn't work.
+        fix bug, the following importing didn't work.
+            use Util::Any {-list => ['uniq']};
+            This was bug of documennt, but now work.
+        fix document
             -kind => 'function' doesn't work. use -kind => ['function'], instead.
             for example, -list => ['uniq']
-	add test for synopsis example
- 	add test of Sub::Exporter generators way and write docuement about it.
-	fix typo in test script
+        add test for synopsis example
+        add test of Sub::Exporter generators way and write docuement about it.
+        fix typo in test script
 
 0.11    2009/09/15 09:47
-	fix test script. if module is not installed, skip test.
+        fix test script. if module is not installed, skip test.
 
 0.10    2009/09/14 11:47
-	add option smart_rename.
+        add option smart_rename.
 
 0.09    2009/09/14 03:31
-	Fix bug, prefix doesn't work when using '-kind' style.
+        Fix bug, prefix doesn't work when using '-kind' style.
 
 0.08    2009/09/11 15:58
-	support Sub::Exporter
+        support Sub::Exporter
         support some of exporting ways of Sub::Exporter
 
 0.07    2009/04/12 03:58
         Fix bug when inheriting
-        Thanks to  Richard Jelinek
+        Thanks to Richard Jelinek
 
 0.06    2009/03/22 14:55
         support Exporter and Exporter::Simple
@@ -92,7 +92,7 @@ Revision history for Util-Any
         new feature to inherit Util::Any(-Base and -Perl6ExportAttrs)
 
 0.04    2008/12/14 17:34
-	-select & -except option is added to select functions to be exported.
+        -select & -except option is added to select functions to be exported.
         enable to rename function name.
 
 0.03    2008/12/05 15:37
