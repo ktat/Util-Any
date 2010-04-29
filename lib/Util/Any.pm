@@ -257,7 +257,11 @@ sub _arrange_args {
     if (_any {ref $_} @$org_args) {
       for (my $i = 0; $i < @$org_args; $i++) {
         my $kind = $org_args->[$i];
-        my $import_setting = ref $org_args->[$i + 1] ? $org_args->[++$i] : undef;
+        my $ref = ref $org_args->[$i + 1];
+        my $import_setting =  $ref ? $org_args->[++$i] : undef;
+        if ($ref eq 'ARRAY' and !@$import_setting) {
+          $import_setting = [''];
+        }
         _insert_want_arg($config, $kind, $import_setting, \%want_kind, \@arg);
       }
     } else {
@@ -397,8 +401,7 @@ sub _base_import {
     push @{"${caller}::ISA"}, __PACKAGE__;
   }
   my @unknown;
-  return unless @flgs;
-  while (my $flg = lc shift @flgs) {
+  while (@flgs and my $flg = lc shift @flgs) {
     no strict 'refs';
     if ($flg eq '-perl6exportattrs') {
       eval {require Perl6::Export::Attrs };
@@ -437,7 +440,7 @@ Util::Any - to export any utilities and to create your own utilitiy module
 
 =cut
 
-our $VERSION = '0.21';
+our $VERSION = '0.22';
 
 =head1 SYNOPSIS
 
@@ -1075,7 +1078,6 @@ This definition works like as pragma.
 
 function name '.' is special. This name is not exported and only execute the code in the definition.
 
-
 =head2 ADD DEFAULT ARGUMENT FOR EXPORTING
 
 Define the following method.
@@ -1093,9 +1095,9 @@ is equal to
 
  use Your::Utils -list, -string;
 
-If you want disable default kinds.
+If you want to disable default kinds.
 
- use Your::Utils -list => [''], -string;
+ use Your::Utils -list => [], -string;
 
 =head2 ADD PLUGGABLE FEATURE FOR YOUR MODULE
 

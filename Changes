@@ -1,5 +1,11 @@
 Revision history for Util-Any
 
+0.22    2010/04/29 22:58:00
+	change the way to disable executing code defined as '.'.
+	  (see 'DO SOMETHING WITHOUT EXPORTING ANYTHING'.)
+	  for example, -list => [''] -> -list => []
+	avoid warning message on perl 5.12
+
 0.21    2010/04/22 02:38:00
         fix bug: _default_kinds and -all keyword doesn't work well.
         add documentation for _default_kinds.

@@ -70,6 +70,7 @@ t/15-default_kinds-disable.t
 t/15-default_kinds-with-all.t
 t/15-default_kinds.t
 t/16-noexport.t
+t/16-noexport-disable.t
 t/lib/MyUtil.pm
 t/lib/SmartRename.pm
 t/lib/MyUtilBase.pm
