@@ -1,14 +1,33 @@
-name:         Util-Any
-version:      0.01
-version_from: lib/Util/Any.pm
-installdirs:  site
+--- #YAML:1.0
+name:               Util-Any
+version:            0.22
+abstract:           to export any utilities and to create your own utilitiy module
+author:
+    - Ktat <ktat@cpan.org>
+license:            unknown
+distribution_type:  module
+configure_requires:
+    ExtUtils::MakeMaker:  0
+build_requires:
+    ExtUtils::MakeMaker:  0
 requires:
-    ExportTo:                      0
-    Hash::Util:                    0
-    List::MoreUtils:               0
-    List::Util:                    0
-    Scalar::Util:                  0
-    Test::More:                    0
-
-distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30
+    Clone:              0
+    Data::Dumper:       0
+    ExportTo:           0
+    Hash::Util:         0
+    List::MoreUtils:    0
+    List::Pairwise:     0
+    List::Util:         0
+    Module::Pluggable:  0
+    Scalar::Util:       0
+    String::CamelCase:  0
+    String::Util:       0
+    Test::More:         0.88
+no_index:
+    directory:
+        - t
+        - inc
+generated_by:       ExtUtils::MakeMaker version 6.56
+meta-spec:
+    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
+    version:  1.4

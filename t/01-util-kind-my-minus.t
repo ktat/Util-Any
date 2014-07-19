@@ -9,16 +9,17 @@ use Scalar::Util ();
 use MyUtil qw/-list/;
 no strict 'refs';
 
+my %already_defined;
 foreach (@List::Util::EXPORT_OK) {
-  ok(defined &{$_} , $_);
+  ok(defined &{$_} , $_) and $already_defined{$_}++;
 }
 
 foreach (@List::MoreUtils::EXPORT_OK) {
-  ok(! defined &{$_} , $_);
+  ok(! defined &{$_} , $_) if not $already_defined{$_}++;
 }
 
 foreach (@Scalar::Util::EXPORT_OK) {
-  ok(! defined &{$_} , $_);
+  ok(! defined &{$_} , $_) if not $already_defined{$_}++;
 }
 
 foreach (@Hash::Util::EXPORT_OK) {
@@ -26,3 +27,4 @@ foreach (@Hash::Util::EXPORT_OK) {
   ok(! defined &{$_} , $_) if defined &{'Hash::Util::' . $_};
 }
 
+warn Data::Dumper::Dumper(\%already_defined);
