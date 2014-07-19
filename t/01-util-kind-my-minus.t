@@ -26,5 +26,3 @@ foreach (@Hash::Util::EXPORT_OK) {
   no strict 'refs';
   ok(! defined &{$_} , $_) if defined &{'Hash::Util::' . $_};
 }
-
-warn Data::Dumper::Dumper(\%already_defined);

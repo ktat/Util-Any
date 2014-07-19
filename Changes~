@@ -1,12 +1,5 @@
 Revision history for Util-Any
 
-{{$NEXT}}
-
-0.23 2014-07-19T08:33:12Z
-
-	Fix test. test failes because List::MoreUtils and List::Utils have same name function in some Perl versions.
-        Fix some typos.
-
 0.22    2010/04/29 22:58:00
 	change the way to disable executing code defined as '.'.
 	  (see 'DO SOMETHING WITHOUT EXPORTING ANYTHING'.)

@@ -1,7 +1,0 @@
-steps = FindVersion, ChangeVersion, CheckChangeLog, DistTest, Commit, Tag, MakeDist, UploadCPAN, Twitter
-
-svn.tagpattern = Util-Any-%v
-
-twitter.config = ~/.twitterrc
-twitter.distname = Util-Any
-twitter.message = shipped %d %v - soon at %u
