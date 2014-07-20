@@ -440,7 +440,7 @@ Util::Any - to export any utilities and to create your own utility module
 
 =cut
 
-our $VERSION = '0.23';
+our $VERSION = '0.24';
 
 =head1 SYNOPSIS
 
