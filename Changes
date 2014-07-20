@@ -2,7 +2,7 @@ Revision history for Util-Any
 
 {{$NEXT}}
 
-0.23 2014-07-19T08:33:12Z
+0.23 2014-07-20T06:05:02Z
 
 	Fix test. test failes because List::MoreUtils and List::Utils have same name function in some Perl versions.
         Fix some typos.
