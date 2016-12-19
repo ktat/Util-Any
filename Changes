@@ -2,6 +2,9 @@ Revision history for Util-Any
 
 {{$NEXT}}
 
+0.25 2016-12-19T15:53:52Z
+	remove Perl6::Export::Attrs support.
+
 0.24 2014-07-22T22:35:47Z
 
 	Fix test. test failes because List::MoreUtils and List::Utils have same name function in some Perl versions.

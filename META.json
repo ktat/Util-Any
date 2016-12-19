@@ -4,7 +4,7 @@
       "Ktat, C<< <ktat at cpan.org> >>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v2.1.1, CPAN::Meta::Converter version 2.141520",
+   "generated_by" : "Minilla/v2.2.0, CPAN::Meta::Converter version 2.142690",
    "license" : [
       "perl_5"
    ],
@@ -74,7 +74,7 @@
          "web" : "https://github.com/ktat/Util-Any"
       }
    },
-   "version" : "0.24",
+   "version" : "0.25",
    "x_contributors" : [
       "drry <drry@d0d07461-0603-4401-acd4-de1884942a52>",
       "ktat <ktat@d0d07461-0603-4401-acd4-de1884942a52>",

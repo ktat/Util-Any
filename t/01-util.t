@@ -61,7 +61,6 @@ MODULE:
 foreach my $m (['-Exporter'        , 'Exporter'            ],
                ['-ExporterSimple'  , 'Exporter::Simple'    ],
                ['-SubExporter'     , 'Sub::Exporter'       ],
-               ['-Perl6ExportAttrs', 'Perl6::Export::Attrs'],
               ) {
   {
     package tmp_package;

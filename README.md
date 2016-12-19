@@ -7,7 +7,6 @@ Util::Any - to export any utilities and to create your own utility module
     use Util::Any -list;
     # you can import any functions of List::Util and List::MoreUtils
     
-
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to choose functions
@@ -15,36 +14,29 @@ If you want to choose functions
     use Util::Any -list => ['uniq'];
     # you can import uniq function only, not import other functions
     
-
     print uniq qw/1, 0, 1, 2, 3, 3/;
 
 If you want to import All kind of utility functions
 
     use Util::Any -all;
     
-
     my $o = bless {};
     my %hash = (a => 1, b => 2);
     
-
     # from Scalar::Util
     blessed $o;
     
-
     # from Hash::Util
     lock_keys %hash;
 
 If you want to import functions with prefix(ex. list\_, scalar\_, hash\_)
 
-    use Util::Any -all, {prefix => 1};
-    use Util::Any -list, {prefix => 1};
-    use Util::Any -list => ['uniq', 'min'], {prefix => 1};
-    
-
+     use Util::Any -all, {prefix => 1};
+     use Util::Any -list, {prefix => 1};
+     use Util::Any -list => ['uniq', 'min'], {prefix => 1};
+     
      print list_uniq qw/1, 0, 1, 2, 3, 3/;
     
-
-
 
 If you want to import functions with your own prefix.
 
@@ -115,17 +107,16 @@ Util::Any can take last argument as option, which should be hash ref.
 
         use Util::Any -list, {prefix => 1};
         
-
         list_uniq(1,2,3,4,5); # it is List::More::Utils's uniq function
 
 - module\_prefix => 1
 
-    see ["PREFIX FOR EACH MODULE"](#PREFIX FOR EACH MODULE).
+    see ["PREFIX FOR EACH MODULE"](#prefix-for-each-module).
     Uti::Any itself doesn't have such a definition.
 
 - smart\_rename => 1
 
-    see ["SMART RENAME FOR EACH KIND"](#SMART RENAME FOR EACH KIND).
+    see ["SMART RENAME FOR EACH KIND"](#smart-rename-for-each-kind).
 
 - plugin => 'lazy' / 'eager' / 0 (default is 'lazy')
 
@@ -156,7 +147,7 @@ Util::Any can take last argument as option, which should be hash ref.
         use Util::Yours -net_amazon; # Plugin::Net::Amazon is loaded
         use Util::Yours -net_all; # Plugin::Net and Plugin::Net::* is loaded
 
-    `_all` is special keyword. see ["NOTE ABOUT all KEYWORD"](#NOTE ABOUT all KEYWORD).
+    `_all` is special keyword. see ["NOTE ABOUT all KEYWORD"](#note-about-all-keyword).
 
 - debug => 1/2
 
@@ -172,7 +163,7 @@ Kinds of functions and list of exported functions are below.
 Note that these modules and version are on my environment(Perl 5.8.4).
 So, it must be different on your environment.
 
-## \-data
+## -data
 
 NOTE THAT: its old name is 'scalar' (you can use the name, yet).
 
@@ -191,7 +182,7 @@ from Scalar::Util (1.19)
     tainted
     weaken
 
-## \-hash
+## -hash
 
 from Hash::Util (0.05)
 
@@ -203,7 +194,7 @@ from Hash::Util (0.05)
     unlock_keys
     unlock_value
 
-## \-list
+## -list
 
 from List::Util (1.19)
 
@@ -262,7 +253,7 @@ from List::Pairwise (0.29)
     last_pairwise
     pair
 
-## \-string
+## -string
 
 from String::Util (0.11)
 
@@ -285,7 +276,7 @@ from String::CamelCase (0.01)
     decamelize
     wordsplit
 
-## \-debug
+## -debug
 
 from Data::Dumper (2.121)
 
@@ -307,9 +298,11 @@ Their priority is the following.
 - 1 rename
 
         -list => {uniq => {-as => 'luniq'}}
+
 - 2 kind\_prefix
 
         -list => {-prefix => list}
+
 - 3 module\_prefix
 
     Only if module's prefix is defined
@@ -319,6 +312,7 @@ Their priority is the following.
 - 4 prefix
 
         ..., {prefix => 1}
+
 - 5 smart\_rename
 
         ..., {smart_rename => 1}
@@ -343,7 +337,7 @@ I don't recommend to use 3, 4, 5 in same time, because it may confuse you.
 
 # NOTE ABOUT all KEYWORD
 
-__all__ is special keyword, so it has some restriction.
+**all** is special keyword, so it has some restriction.
 
 ## use module with 'all' cannot take its arguments
 
@@ -357,7 +351,7 @@ When sequential arguments is kind's, it's ok.
 
     use Util::Any -all, -list => ['unique'];
 
-## \-plugin\_module\_all cannot take its arguments
+## -plugin\_module\_all cannot take its arguments
 
     use Util::Yours -plugin_name_all;
 
@@ -371,14 +365,12 @@ Just inherit Util::Any and define $Utils hash ref as the following.
 
     package Util::Yours;
     
-
     use Clone qw/clone/;
     use Util::Any -Base; # as same as use base qw/Util::Any/;
     # If you don't want to inherit Util::Any setting, no need to clone.
     our $Utils = clone $Util::Any::Utils;
     push @{$Utils->{-list}}, qw/Your::Favorite::List::Utils/;
     
-
     1;
 
 In your code;
@@ -420,7 +412,7 @@ Scalar is module name. Array ref is module name and its prefix.
     $Utils = { list => ['List::Utils'] };
     $Utils = { list => [['List::Utils', 'prefix_']] };
 
-see ["PREFIX FOR EACH MODULE"](#PREFIX FOR EACH MODULE)
+see ["PREFIX FOR EACH MODULE"](#prefix-for-each-module)
 
 ## PREFIX FOR EACH MODULE
 
@@ -429,7 +421,6 @@ You can specify prefix for each module like the following.
 
     use base qw/Util::Any/;
     
-
     our $Utils = {
          list => [['List::Util' => 'lu_'], ['List::MoreUtils' => 'lmu_']]
     };
@@ -501,8 +492,6 @@ or
                   ],
     };
 
-
-
 ### SELECT FUNCTIONS EXCEPT
 
 Inverse of -select option. Cannot use this option with -select.
@@ -542,11 +531,9 @@ Your utility class:
 
     package SubExporterGenerator;
     
-
     use strict;
     use Util::Any -Base;
     
-
     our $Utils =
       {
        -test => [[
@@ -555,7 +542,6 @@ Your utility class:
                 ]]
       };
     
-
     sub build_min_reformatter {
       my ($pkg, $class, $name, @option) = @_;
       no strict 'refs';
@@ -570,7 +556,6 @@ Your script using your utility class:
 
     package main;
     
-
     use strict;
     use lib qw(lib t/lib);
     use SubExporterGenerator -test => [
@@ -578,7 +563,6 @@ Your script using your utility class:
           min => {-as => "min_under_5" , under => 5},
         ];
     
-
     print min_under_20(100,25,30); # 20
     print min_under_20(100,10,30); # 10
     print min_under_20(100,25,30); # 5
@@ -619,7 +603,6 @@ And write as the following:
 
     use Util::Yours -number => [-args => {thousands_sep => "_", int_curr_symbol => '\'} ];
     
-
     print number_format(100000); # 100_000
     print number_price(100000);  # \100_000
 
@@ -674,7 +657,6 @@ And write plugin as the following:
 
     package Util::Yours::Plugin::Net;
     
-
     sub utils {
       # This structure is as same as $Utils.
       return {
@@ -694,14 +676,12 @@ And write plugin as the following:
          };
     }
     
-
     1;
 
 And you can use it as the following.
 
     use Util::Yours -net => [amazon => {token => "your_token"}];
     
-
     my $amazon = amazon; # get Net::Amazon object;
 
 Util::Any can merge definition in plugins. If same kind is in several plugins, it works.
@@ -714,7 +694,8 @@ some of import options are for Util::Any and others are for exporter-like module
 (especially, using with Sub::Exporter is confusing).
 
 CPAN has some modules to export functions.
-Util::Any can work with some of such modules, [Exporter](http://search.cpan.org/perldoc?Exporter), [Exporter::Simple](http://search.cpan.org/perldoc?Exporter::Simple), [Sub::Exporter](http://search.cpan.org/perldoc?Sub::Exporter) and [Perl6::Export::Attrs](http://search.cpan.org/perldoc?Perl6::Export::Attrs).
+Util::Any can work with some of such modules, [Exporter](https://metacpan.org/pod/Exporter), [Exporter::Simple](https://metacpan.org/pod/Exporter::Simple) and [Sub::Exporter](https://metacpan.org/pod/Sub::Exporter).
+(note that: [Perl6::Export::Attrs](https://metacpan.org/pod/Perl6::Export::Attrs) is not supported after version 0.25 and the above)
 If you want to use other modules, please inform me or implement import method by yourself.
 
 If you want to use module mentioned above, you have to change the way to inherit these modules.
@@ -733,10 +714,9 @@ Normally, you use;
 
     package YourUtils;
     
-
     use Util::Any -Base; # or "use base qw/Util::Any/;"
 
-But, if you want to use [Exporter](http://search.cpan.org/perldoc?Exporter), [Exporter::Simple](http://search.cpan.org/perldoc?Exporter::Simple) or [Perl6::Export::Attrs](http://search.cpan.org/perldoc?Perl6::Export::Attrs).
+But, if you want to use [Exporter](https://metacpan.org/pod/Exporter), [Exporter::Simple](https://metacpan.org/pod/Exporter::Simple) or [Perl6::Export::Attrs](https://metacpan.org/pod/Perl6::Export::Attrs).
 write as the following, instead.
 
     # if you want to use Exporter
@@ -745,11 +725,9 @@ write as the following, instead.
     use Util::Any -ExporterSimple;
     # if you want to use Sub::Exporter
     use Util::Any -SubExporter;
-    # if you want to use Perl6::Export::Attrs
-    use Util::Any -Perl6ExportAttrs;
 
 That's all.
-Note that __don't use base the above modules in your utility module__.
+Note that **don't use base the above modules in your utility module**.
 
 There is one notice to use Sub::Exporter.
 
@@ -769,85 +747,6 @@ If you want to change this name, do the following.
               exports => [...],
               groups  => { ... },
           });
-
-### EXAMPLE to USE Perl6::Export::Attrs in YOUR OWN UTIL MODULE
-
-Perl6::Export::Attributes is not recommended in the following URL
-(http://www.perlfoundation.org/perl5/index.cgi?pbp\_module\_recommendation\_commentary).
-So, you'd better use other exporter module. It is left as an example.
-
-    package Util::Yours;
-    
-
-    use Clone qw/clone/;
-    use Util::Any -Perl6ExportAttrs;
-    our $Utils = clone $Util::Any::Utils;
-    push @{$Utils->{list}}, qw/Your::Favorite::List::Utils/;
-    
-
-    sub foo :Export(:DEFAULT) {
-      return "foo!";
-    }
-    
-
-    sub bar :Export(:bar) {
-      return "bar!";
-    }
-    
-
-    1;
-
-## IMPLEMENT IMPORT by YOURSELF
-
-Perl6::Export::Attributes is not recommended in the following URL
-(http://www.perlfoundation.org/perl5/index.cgi?pbp\_module\_recommendation\_commentary).
-So, you'd better use other exporter module. It is left as an example.
-
-You can write your own import method and BEGIN block like the following.
-Instead of using "use Util::Any -Perl6ExportAttrs".
-
-    package UtilPerl6ExportAttr;
-    
-
-    use strict;
-    use base qw/Util::Any/;
-    use Clone qw/clone/;
-    
-
-    BEGIN {
-      use Perl6::Export::Attrs ();
-      no strict 'refs';
-      *{__PACKAGE__ . '::MODIFY_CODE_ATTRIBUTES'} = \&Perl6::Export::Attrs::_generic_MCA;
-    }
-    
-
-    our $Utils = clone $Util::Any::Utils;
-    $Utils->{your_list} = [
-                     ['List::Util', '', [qw(first min sum)]],
-                    ];
-    
-
-    sub import {
-      my $pkg = shift;
-      my $caller = (caller)[0];
-    
-
-      no strict 'refs';
-      eval "package $caller; $pkg" . '->Util::Any::import(@_);';
-      my @arg = grep !exists $Utils->{$_}, @_;
-      if ((@_ and @arg) or !@_) {
-        eval "package $caller; $pkg" . '->Perl6::Export::Attrs::_generic_import(@arg)';
-      }
-      return;
-    }
-    
-
-    sub foo :Export(:DEFAULT) {
-      return "foo!";
-    }
-    
-
-    1;
 
 # AUTHOR
 
@@ -896,7 +795,7 @@ patches and collaborators are welcome.
 
 The following modules can work with Util::Any.
 
-[Exporter](http://search.cpan.org/perldoc?Exporter), [Exporter::Simple](http://search.cpan.org/perldoc?Exporter::Simple), [Sub::Exporter](http://search.cpan.org/perldoc?Sub::Exporter) and [Perl6::Export::Attrs](http://search.cpan.org/perldoc?Perl6::Export::Attrs).
+[Exporter](https://metacpan.org/pod/Exporter), [Exporter::Simple](https://metacpan.org/pod/Exporter::Simple), [Sub::Exporter](https://metacpan.org/pod/Sub::Exporter) and [Perl6::Export::Attrs](https://metacpan.org/pod/Perl6::Export::Attrs).
 
 The following is new module Util::All, based on Util::Any.
 
